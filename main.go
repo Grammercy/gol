@@ -2,43 +2,98 @@ package main
 
 import (
   "fmt"
-  // "sync"
+  "sync"
   "strconv"
   "os"
+  "time"
 )
 
+type Position struct {
+  X int
+  Y int
+  Val bool
+}
+
 func main(){
+  lifeMap := makeLifeMap()
+  lifeMap[0][1], lifeMap[1][2], lifeMap[2][0], lifeMap[2][1], lifeMap[2][2] = true, true, true, true, true
+  
+  for {
+    printMap(lifeMap)
+    fmt.Println()
+    passFrame(lifeMap)
+  }
+}
+
+func printMap(arr [][]bool) {
+  for i := range(arr) {
+    for j := range(arr[i]) {
+      if !arr[i][j] {
+        fmt.Print("")
+      } else {
+        fmt.Print("󰝤")
+      }
+    }
+    fmt.Println()
+  }
+} 
+
+func makeLifeMap() [][]bool {
   if len(os.Args) < 3 {
     fmt.Println("Not enough args")
-    return
+    os.Exit(1)
   }
   width, err := strconv.Atoi(os.Args[1])
   if err != nil {
     fmt.Println("Invalid argument 1")
-    return
+    os.Exit(1)
   }
   height, err := strconv.Atoi(os.Args[2])
   if err != nil {
     fmt.Println("Invalid argument 1")
-    return
+    os.Exit(1)
   }
   var lifeMap = make([][]bool, height)
 
   for i := 0; i < len(lifeMap); i++ {
     lifeMap[i] = make([]bool, width)
   }
-  
-  
+  return lifeMap
 }
 
-func processCell(x, y int, lifeMap [][]bool) {
+func passFrame(lifeMap[][]bool) {
+  ch := make(chan Position)
+  wg := new(sync.WaitGroup)
+  for y := 0; y < len(lifeMap); y++ {
+    for x := 0; x < len(lifeMap[y]); x++ {
+      wg.Add(1)
+      go processCell(x, y, lifeMap, ch, wg)
+    }
+  }
+  go func() {
+    wg.Wait()
+    close(ch)
+  } ()
+  time.Sleep(1 * time.Second)
+  for i := range(ch) {
+    lifeMap[i.Y][i.X] = i.Val
+  }
+}
+
+func processCell(x, y int, lifeMap [][]bool, ch chan Position, wg * sync.WaitGroup) {
+  defer wg.Done()
   neighbors := getNeighbors(x, y, lifeMap)
-  if neighbors == 3 {
-    lifeMap[y][x] = true
+  if neighbors == 3 && !lifeMap[y][x]{
+    fmt.Println("Turning ",x,y,"alive")
+    ch <- Position{x, y, true}
+    return
   }
-  if neighbors < 2 || neighbors > 3 {
-    lifeMap[y][x] = false
+  if neighbors < 2 || neighbors > 3  && lifeMap[y][x]{
+    // fmt.Println("Killing ",x,y)
+    ch <- Position{x, y, false}
+    return
   }
+  return 
 } 
 
 func getNeighbors(x,y int, arr[][]bool) int {
@@ -60,7 +115,7 @@ func checkRight(x, y int, arr [][]bool) int{
 
 func checkLeft(x, y int, arr [][]bool) int{
   if x == 0 {
-    if !arr[y][len(arr[y])] {
+    if !arr[y][len(arr[y]) - 1] {
       return 0
     }
     return 1
@@ -73,7 +128,7 @@ func checkLeft(x, y int, arr [][]bool) int{
 
 func checkUp(x, y int, arr[][]bool) int {
   if y == 0 {
-    if !arr[len(arr)][x] {
+    if !arr[len(arr) - 1][x] {
       return 0
     }
     return 1
