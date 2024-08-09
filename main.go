@@ -1,11 +1,12 @@
 package main
 
 import (
-  "fmt"
-  "sync"
-  "strconv"
-  "os"
-  "time"
+	"fmt"
+	"time"
+	// "sync"
+	"os"
+	"strconv"
+	// "time"
 )
 
 type Position struct {
@@ -62,38 +63,33 @@ func makeLifeMap() [][]bool {
 }
 
 func passFrame(lifeMap[][]bool) {
-  ch := make(chan Position)
-  wg := new(sync.WaitGroup)
+  var listOfChanges []Position
   for y := 0; y < len(lifeMap); y++ {
     for x := 0; x < len(lifeMap[y]); x++ {
-      wg.Add(1)
-      go processCell(x, y, lifeMap, ch, wg)
+      pos := processCell(x, y, lifeMap)
+      if pos.X != -1 {
+        listOfChanges = append(listOfChanges, pos)
+      }
     }
   }
-  go func() {
-    wg.Wait()
-    close(ch)
-  } ()
-  time.Sleep(1 * time.Second)
-  for i := range(ch) {
-    lifeMap[i.Y][i.X] = i.Val
+  time.Sleep(100 * time.Millisecond)
+  for i := 0; i < len(listOfChanges); i++ {
+    p := listOfChanges[i]
+    lifeMap[p.Y][p.X] = p.Val
   }
 }
 
-func processCell(x, y int, lifeMap [][]bool, ch chan Position, wg * sync.WaitGroup) {
-  defer wg.Done()
+func processCell(x, y int, lifeMap [][]bool) Position{
   neighbors := getNeighbors(x, y, lifeMap)
   if neighbors == 3 && !lifeMap[y][x]{
-    fmt.Println("Turning ",x,y,"alive")
-    ch <- Position{x, y, true}
-    return
+    // fmt.Println("Turning ",x,y,"alive")
+    return Position{x, y, true}
   }
   if neighbors < 2 || neighbors > 3  && lifeMap[y][x]{
     // fmt.Println("Killing ",x,y)
-    ch <- Position{x, y, false}
-    return
+    return Position{x, y, false}
   }
-  return 
+  return Position{-1, 0, false}
 } 
 
 func getNeighbors(x,y int, arr[][]bool) int {
