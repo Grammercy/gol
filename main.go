@@ -56,12 +56,12 @@ func main(){
   running := true
   // fmt.Print("\033[H\033[2J")
   for running {
-    // for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-			// switch event.(type) {
-			// case *sdl.QuitEvent:
-				// running = false
-			// }
-    // }
+    for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+			switch event.(type) {
+			case *sdl.QuitEvent:
+				running = false
+			}
+    }
     
     err := window.UpdateSurface()
     passFrame(lifeMap, width, height, surface)
