@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+  "github.com/veandco/go-sdl2/sdl"
 )
 
 type Position struct {
@@ -16,18 +17,55 @@ type Position struct {
 }
 
 func main(){
+  err := sdl.Init(sdl.INIT_EVERYTHING)
+  if err != nil {
+    panic(err)
+  }
+  defer sdl.Quit()
+  window, err := sdl.CreateWindow("gol", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 500, 500, 0x00000020)
+  if err != nil {
+    panic(err)
+  }
+  defer window.Destroy()
+  surface, err := window.GetSurface()
+  if err != nil {
+    panic(err)
+  }
+  w, err := strconv.Atoi(os.Args[1])
+  h, err := strconv.Atoi(os.Args[2])
+  width, height := int32(500), int32(500)
+  width /= int32(w)
+  height /= int32(h)
+
+  // fmt.Println("width ", width, "height", height)
+  window.UpdateSurface()
   lifeMap := makeLifeMap()
   randomizeMap(lifeMap)
   // lifeMap[0][1], lifeMap[1][2], lifeMap[2][0], lifeMap[2][1], lifeMap[2][2] = true, true, true, true, true
   start := time.Now()
-  fmt.Print("\033[H\033[2J")
+  for i := range lifeMap {
+    for j := range lifeMap[i]{
+      renderCell(width, height, j, i, lifeMap[i][j], surface, window)
+    }
+  }
+  // fmt.Print("\033[H\033[2J")
   for {
-    printMap(lifeMap)
-    fmt.Println()
-    passFrame(lifeMap)
-    time.Sleep(100 * time.Millisecond)
+    // printMap(lifeMap)
+    // fmt.Println()
+    passFrame(lifeMap, width, height, surface, window)
+    time.Sleep(16 * time.Millisecond)
   }
   _ = time.Since(start)
+}
+
+func renderCell(width, height int32, x, y int, alive bool, surface *sdl.Surface, window *sdl.Window) {
+  rect := sdl.Rect{int32(x) * width, int32(y) * height, width, height}
+  colour := sdl.Color{R: 0, G: 0, B: 0, A: 255}
+  if alive {
+    colour = sdl.Color{R: 255, G: 255, B: 255, A: 255}
+  }
+  pixel := sdl.MapRGBA(surface.Format, colour.R, colour.G, colour.B, colour.A)
+  surface.FillRect(&rect, pixel)
 }
 
 func randomizeMap(arr [][]bool) {
@@ -62,17 +100,17 @@ func printMap(arr [][]bool) {
 
 func makeLifeMap() [][]bool {
   if len(os.Args) < 3 {
-    fmt.Println("Not enough args")
+    fmt.Println("Not enough args, usage: ./main height width")
     os.Exit(1)
   }
   width, err := strconv.Atoi(os.Args[1])
   if err != nil {
-    fmt.Println("Invalid argument 1")
+    fmt.Println("Invalid argument 1(height)")
     os.Exit(1)
   }
   height, err := strconv.Atoi(os.Args[2])
   if err != nil {
-    fmt.Println("Invalid argument 1")
+    fmt.Println("Invalid argument 2(width)")
     os.Exit(1)
   }
   var lifeMap = make([][]bool, height)
@@ -83,7 +121,7 @@ func makeLifeMap() [][]bool {
   return lifeMap
 }
 
-func passFrame(lifeMap[][]bool) {
+func passFrame(lifeMap[][]bool, width, height int32, surface *sdl.Surface, window *sdl.Window) {
   var wg sync.WaitGroup 
   ch := make(chan Position, (len(lifeMap) * len(lifeMap[1])))
   for y := 0; y < len(lifeMap); y++ {
@@ -97,7 +135,9 @@ func passFrame(lifeMap[][]bool) {
   close(ch)
   for i := range(ch) {
     lifeMap[i.Y][i.X] = i.Val
+    renderCell(width, height, i.X, i.Y, i.Val, surface, window)
   }
+  window.UpdateSurface()
 }
 
 func processRow(y int, lifeMap [][]bool, ch chan Position) {
