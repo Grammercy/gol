@@ -22,7 +22,8 @@ func main(){
     panic(err)
   }
   defer sdl.Quit()
-  window, err := sdl.CreateWindow("gol", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 500, 500, 0x00000020)
+  window, err := sdl.CreateWindow("gol", sdl.WINDOWPOS_CENTERED ,sdl.WINDOWPOS_CENTERED, 1366, 768, 0x00000020)
+  window.SetFullscreen(sdl.WINDOW_FULLSCREEN_DESKTOP)
   if err != nil {
     panic(err)
   }
@@ -33,9 +34,13 @@ func main(){
   }
   w, err := strconv.Atoi(os.Args[1])
   h, err := strconv.Atoi(os.Args[2])
-  width, height := int32(500), int32(500)
+  width, height := int32(1366), int32(768)
   width /= int32(w)
   height /= int32(h)
+  if width < height {
+    height = width
+  }
+  width = height
 
   // fmt.Println("width ", width, "height", height)
   window.UpdateSurface()
@@ -45,27 +50,42 @@ func main(){
   start := time.Now()
   for i := range lifeMap {
     for j := range lifeMap[i]{
-      renderCell(width, height, j, i, lifeMap[i][j], surface, window)
+      renderCell(width, height, j, i, lifeMap[i][j], surface)
     }
   }
+  running := true
   // fmt.Print("\033[H\033[2J")
-  for {
+  for running {
+    // for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+			// switch event.(type) {
+			// case *sdl.QuitEvent:
+				// running = false
+			// }
+    // }
+    
+    err := window.UpdateSurface()
+    passFrame(lifeMap, width, height, surface)
+    if err != nil {
+      panic(err)
+    }
+    sdl.Delay(16)
     // printMap(lifeMap)
     // fmt.Println()
-    passFrame(lifeMap, width, height, surface, window)
-    time.Sleep(16 * time.Millisecond)
   }
   _ = time.Since(start)
 }
 
-func renderCell(width, height int32, x, y int, alive bool, surface *sdl.Surface, window *sdl.Window) {
+func renderCell(width, height int32, x, y int, alive bool, surface *sdl.Surface) {
   rect := sdl.Rect{int32(x) * width, int32(y) * height, width, height}
   colour := sdl.Color{R: 0, G: 0, B: 0, A: 255}
   if alive {
     colour = sdl.Color{R: 255, G: 255, B: 255, A: 255}
   }
   pixel := sdl.MapRGBA(surface.Format, colour.R, colour.G, colour.B, colour.A)
-  surface.FillRect(&rect, pixel)
+  err := surface.FillRect(&rect, pixel)
+  if err != nil {
+    panic(err)
+  }
 }
 
 func randomizeMap(arr [][]bool) {
@@ -121,7 +141,7 @@ func makeLifeMap() [][]bool {
   return lifeMap
 }
 
-func passFrame(lifeMap[][]bool, width, height int32, surface *sdl.Surface, window *sdl.Window) {
+func passFrame(lifeMap[][]bool, width, height int32, surface *sdl.Surface) {
   var wg sync.WaitGroup 
   ch := make(chan Position, (len(lifeMap) * len(lifeMap[1])))
   for y := 0; y < len(lifeMap); y++ {
@@ -135,9 +155,8 @@ func passFrame(lifeMap[][]bool, width, height int32, surface *sdl.Surface, windo
   close(ch)
   for i := range(ch) {
     lifeMap[i.Y][i.X] = i.Val
-    renderCell(width, height, i.X, i.Y, i.Val, surface, window)
+    renderCell(width, height, i.X, i.Y, i.Val, surface)
   }
-  window.UpdateSurface()
 }
 
 func processRow(y int, lifeMap [][]bool, ch chan Position) {
