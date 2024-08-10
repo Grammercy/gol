@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"time"
-	// "sync"
+	"math/rand"
 	"os"
 	"strconv"
-	// "time"
+	"sync"
+	"time"
 )
 
 type Position struct {
@@ -17,26 +17,47 @@ type Position struct {
 
 func main(){
   lifeMap := makeLifeMap()
-  lifeMap[0][1], lifeMap[1][2], lifeMap[2][0], lifeMap[2][1], lifeMap[2][2] = true, true, true, true, true
-  
+  randomizeMap(lifeMap)
+  // lifeMap[0][1], lifeMap[1][2], lifeMap[2][0], lifeMap[2][1], lifeMap[2][2] = true, true, true, true, true
+  start := time.Now()
+  fmt.Print("\033[H\033[2J")
   for {
     printMap(lifeMap)
     fmt.Println()
     passFrame(lifeMap)
+    time.Sleep(100 * time.Millisecond)
+  }
+  _ = time.Since(start)
+}
+
+func randomizeMap(arr [][]bool) {
+  for i := range arr {
+    for j := range arr[i] {
+      val := rand.Intn(2)
+      if val == 1 {
+        arr[i][j] = true
+      } else {
+        arr[i][j] = false
+      }
+    }
   }
 }
 
 func printMap(arr [][]bool) {
+  fmt.Print("\033[s")
+  str := ""
   for i := range(arr) {
     for j := range(arr[i]) {
       if !arr[i][j] {
-        fmt.Print("")
+        str += ""
       } else {
-        fmt.Print("󰝤")
+        str += "󰝤"
       }
     }
-    fmt.Println()
+    str += "\n"
   }
+  fmt.Print("\033[u\033[K")
+  fmt.Printf("%s", str)
 } 
 
 func makeLifeMap() [][]bool {
@@ -63,19 +84,28 @@ func makeLifeMap() [][]bool {
 }
 
 func passFrame(lifeMap[][]bool) {
-  var listOfChanges []Position
+  var wg sync.WaitGroup 
+  ch := make(chan Position, (len(lifeMap) * len(lifeMap[1])))
   for y := 0; y < len(lifeMap); y++ {
-    for x := 0; x < len(lifeMap[y]); x++ {
-      pos := processCell(x, y, lifeMap)
-      if pos.X != -1 {
-        listOfChanges = append(listOfChanges, pos)
-      }
-    }
+    wg.Add(1)
+    go func() {
+      defer wg.Done()
+      processRow(y, lifeMap, ch)
+    }()
   }
-  time.Sleep(100 * time.Millisecond)
-  for i := 0; i < len(listOfChanges); i++ {
-    p := listOfChanges[i]
-    lifeMap[p.Y][p.X] = p.Val
+  wg.Wait()
+  close(ch)
+  for i := range(ch) {
+    lifeMap[i.Y][i.X] = i.Val
+  }
+}
+
+func processRow(y int, lifeMap [][]bool, ch chan Position) {
+  for x := 0; x < len(lifeMap[y]); x++ {
+    pos := processCell(x, y, lifeMap)
+    if pos.X != -1 {
+      ch <- pos
+    }
   }
 }
 
