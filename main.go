@@ -17,6 +17,7 @@ type Position struct {
 }
 
 func main() {
+	lifeMap := makeLifeMap()
 	err := sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
 		panic(err)
@@ -44,7 +45,6 @@ func main() {
 
 	// fmt.Println("width ", width, "height", height)
 	window.UpdateSurface()
-	lifeMap := makeLifeMap()
 	randomizeMap(lifeMap)
 	// lifeMap[0][1], lifeMap[1][2], lifeMap[2][0], lifeMap[2][1], lifeMap[2][2] = true, true, true, true, true
 	start := time.Now()
