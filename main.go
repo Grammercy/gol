@@ -47,32 +47,49 @@ func main() {
 	window.UpdateSurface()
 	randomizeMap(lifeMap)
 	// lifeMap[0][1], lifeMap[1][2], lifeMap[2][0], lifeMap[2][1], lifeMap[2][2] = true, true, true, true, true
-	start := time.Now()
 	for i := range lifeMap {
 		for j := range lifeMap[i] {
 			renderCell(width, height, j, i, lifeMap[i][j], surface)
 		}
 	}
 	running := true
+  avg := time.Duration(0)
 	// fmt.Print("\033[H\033[2J")
 	for running {
+
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+      // fmt.Println(event)
 			switch event.(type) {
 			case *sdl.QuitEvent:
+        fmt.Println("exit")
 				running = false
 			}
 		}
+    // sdl.PollEvent()
 
-		err := window.UpdateSurface()
+    surface, err := window.GetSurface()
+    if err != nil {
+      panic(err)
+    }
+	  start := time.Now()
 		passFrame(lifeMap, width, height, surface)
+		err = window.UpdateSurface()
 		if err != nil {
 			panic(err)
 		}
-		sdl.Delay(16)
+    frameTime := time.Since(start)
+    avg = (avg + frameTime) / 2
+		if time.Since(start) < 16 * time.Millisecond {
+      time.Sleep(16 * time.Millisecond - time.Since(start))
+    } else if frameTime > 16 * time.Millisecond{
+      fmt.Println("Long frame comp", frameTime)
+    } else {
+      fmt.Println("Long frame render time ", time.Since(start), " comp time ", frameTime)
+    }
 		// printMap(lifeMap)
 		// fmt.Println()
 	}
-	_ = time.Since(start)
+  fmt.Println("Frame avg time ", avg)
 }
 
 func renderCell(width, height int32, x, y int, alive bool, surface *sdl.Surface) {
