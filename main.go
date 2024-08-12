@@ -56,6 +56,7 @@ func main() {
   avg := time.Duration(0)
 	// fmt.Print("\033[H\033[2J")
 	for running {
+	  start := time.Now()
 
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
       // fmt.Println(event)
@@ -71,7 +72,6 @@ func main() {
     if err != nil {
       panic(err)
     }
-	  start := time.Now()
 		passFrame(lifeMap, width, height, surface)
 		err = window.UpdateSurface()
 		if err != nil {
