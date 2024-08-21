@@ -23,8 +23,7 @@ func main() {
 		panic(err)
 	}
 	defer sdl.Quit()
-	window, err := sdl.CreateWindow("gol", sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED, 1366, 768, 0x00000020)
-	window.SetFullscreen(sdl.WINDOW_FULLSCREEN_DESKTOP)
+	window, err := sdl.CreateWindow("gol", sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED, 1000, 1000, sdl.WINDOW_FULLSCREEN_DESKTOP)
 	if err != nil {
 		panic(err)
 	}
@@ -35,7 +34,7 @@ func main() {
 	}
 	w, err := strconv.Atoi(os.Args[1])
 	h, err := strconv.Atoi(os.Args[2])
-	width, height := int32(1366), int32(768)
+	width, height := window.GetSize()
 	width /= int32(w)
 	height /= int32(h)
 	if width < height {
@@ -46,24 +45,30 @@ func main() {
 	// fmt.Println("width ", width, "height", height)
 	window.UpdateSurface()
 	randomizeMap(lifeMap)
+  // lifeMap[1][1] = true
 	// lifeMap[0][1], lifeMap[1][2], lifeMap[2][0], lifeMap[2][1], lifeMap[2][2] = true, true, true, true, true
+  neighborMap := generateNeighborMap(lifeMap)
 	for i := range lifeMap {
 		for j := range lifeMap[i] {
 			renderCell(width, height, j, i, lifeMap[i][j], surface)
 		}
 	}
+  // printNeighborMap(neighborMap)
 	running := true
   avg := time.Duration(0)
 	// fmt.Print("\033[H\033[2J")
+  ch := make(chan [][]bool, 60)
 	for running {
 	  start := time.Now()
 
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
       // fmt.Println(event)
-			switch event.(type) {
+      switch t := event.(type) {
 			case *sdl.QuitEvent:
-        fmt.Println("exit")
+        fmt.Println("exit", t)
 				running = false
+      // case *sdl.KeyboardEvent:
+        // fmt.Println(t.Keysym.Sym)
 			}
 		}
     // sdl.PollEvent()
@@ -72,24 +77,38 @@ func main() {
     if err != nil {
       panic(err)
     }
-		passFrame(lifeMap, width, height, surface)
+    // width, height := int32(0), int32(0)
+		passFrame(lifeMap, neighborMap, width, height, surface, ch)
+    // fmt.Println()
 		err = window.UpdateSurface()
 		if err != nil {
 			panic(err)
 		}
     frameTime := time.Since(start)
     avg = (avg + frameTime) / 2
-		if time.Since(start) < 16 * time.Millisecond {
-      time.Sleep(16 * time.Millisecond - time.Since(start))
-    } else if frameTime > 16 * time.Millisecond{
-      fmt.Println("Long frame comp", frameTime)
+		if time.Since(start) < 32 * time.Millisecond {
+      time.Sleep(32 * time.Millisecond - time.Since(start))
+    } else if frameTime > 32 * time.Millisecond {
+      go fmt.Println("Long frame comp", frameTime)
     } else {
-      fmt.Println("Long frame render time ", time.Since(start), " comp time ", frameTime)
+      // fmt.Println("Long frame render time ", time.Since(start), " comp time ", frameTime)
     }
-		// printMap(lifeMap)
 		// fmt.Println()
 	}
   fmt.Println("Frame avg time ", avg)
+}
+
+func generateNeighborMap(lifeMap [][]bool) [][]int16 {
+  neighborMap := make([][]int16, len(lifeMap))
+  for i := 0; i < len(lifeMap); i++ {
+    neighborMap[i] = make([]int16, len(lifeMap[i]))
+  }
+  for i := 0; i < len(lifeMap); i++ {
+    for j := 0; j < len(lifeMap[i]); j++ {
+      neighborMap[i][j] = int16(getNeighbors(j, i, lifeMap))
+    }
+  }
+  return neighborMap
 }
 
 func renderCell(width, height int32, x, y int, alive bool, surface *sdl.Surface) {
@@ -119,7 +138,7 @@ func randomizeMap(arr [][]bool) {
 }
 
 func printMap(arr [][]bool) {
-	fmt.Print("\033[s")
+	// fmt.Print("\033[s")
 	str := ""
 	for i := range arr {
 		for j := range arr[i] {
@@ -131,7 +150,7 @@ func printMap(arr [][]bool) {
 		}
 		str += "\n"
 	}
-	fmt.Print("\033[u\033[K")
+	// fmt.Print("\033[u\033[K")
 	fmt.Printf("%s", str)
 }
 
@@ -158,14 +177,17 @@ func makeLifeMap() [][]bool {
 	return lifeMap
 }
 
-func passFrame(lifeMap [][]bool, width, height int32, surface *sdl.Surface) {
+func passFrame(lifeMap [][]bool, neighborMap [][]int16, width, height int32, surface *sdl.Surface, frameBuffer chan [][]bool) {
+  // printNeighborMap(neighborMap)
+	// printMap(lifeMap)
+  // fmt.Println(lifeMap)
 	var wg sync.WaitGroup
 	ch := make(chan Position, (len(lifeMap) * len(lifeMap[1])))
 	for y := 0; y < len(lifeMap); y++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			processRow(y, lifeMap, ch)
+			processRow(y, lifeMap, neighborMap, ch)
 		}()
 	}
 	wg.Wait()
@@ -173,25 +195,75 @@ func passFrame(lifeMap [][]bool, width, height int32, surface *sdl.Surface) {
 	for i := range ch {
 		lifeMap[i.Y][i.X] = i.Val
 		renderCell(width, height, i.X, i.Y, i.Val, surface)
+    changeNeighborOfCells(i, neighborMap)
+    // updateNeighbors(i, lifeMap, neighborMap)
 	}
+  // printMap(lifeMap)
 }
 
-func processRow(y int, lifeMap [][]bool, ch chan Position) {
+func printNeighborMap(neighborMap [][]int16) {
+  for i := 0; i < len(neighborMap); i++ {
+    for j := 0; j < len(neighborMap[i]); j++ {
+      fmt.Print(neighborMap[i][j], " ")
+    }
+    fmt.Print("\n")
+  }
+}
+
+func updateNeighbors(pos Position, lifeMap [][]bool, neighborMap [][]int16) {
+  y, x := pos.Y, pos.X
+  neighborMap[((y - 1) % (len(lifeMap) - 1 )) + 1][((x - 1) % (len(lifeMap[y]) - 1 )) + 1] = int16(getNeighbors(((x - 1 % (len(lifeMap[y]) - 1 )) + 1), ((y - 1) % (len(lifeMap) - 1 ) + 1), lifeMap))
+  neighborMap[((y + 1) % (len(lifeMap) - 1 )) + 1][((x - 1) % (len(lifeMap[y]) - 1 )) + 1] = int16(getNeighbors(((x - 1) % (len(lifeMap[y]) - 1 ) + 1), ((y + 1) % (len(lifeMap) - 1 ) + 1), lifeMap))
+  neighborMap[y][((x - 1) % (len(lifeMap[y]) - 1 )) + 1] = int16(getNeighbors(((x - 1) % (len(lifeMap[y]) - 1 ) + 1), y, lifeMap))
+  neighborMap[((y - 1) % (len(lifeMap) - 1 )) + 1][((x + 1) % (len(lifeMap[y]) - 1 )) + 1] = int16(getNeighbors(((x + 1) % (len(lifeMap[y]) - 1) + 1), ((y - 1) % (len(lifeMap) - 1) + 1), lifeMap))
+  neighborMap[((y + 1) % (len(lifeMap) - 1 )) + 1][((x + 1) % (len(lifeMap[y]) - 1 )) + 1] = int16(getNeighbors(((x + 1) % (len(lifeMap[y]) - 1) + 1), ((y + 1) % (len(lifeMap) - 1) + 1), lifeMap))
+  neighborMap[y][((x + 1) % (len(lifeMap[y]) - 1 )) + 1] = int16(getNeighbors(((x + 1) % (len(lifeMap[y]) - 1) + 1), y, lifeMap))
+  neighborMap[((y - 1) % (len(lifeMap) - 1 )) + 1][x] = int16(getNeighbors(x, ((y - 1) % (len(lifeMap) - 1) + 1), lifeMap))
+  neighborMap[((y + 1) % (len(lifeMap) - 1 )) + 1][x] = int16(getNeighbors(x, ((y + 1) % (len(lifeMap) - 1) + 1), lifeMap))
+}
+
+func processRow(y int, lifeMap [][]bool, neighborMap [][]int16, ch chan Position) {
 	for x := 0; x < len(lifeMap[y]); x++ {
-		pos := processCell(x, y, lifeMap)
+		pos := processCell(x, y, lifeMap, neighborMap)
 		if pos.X != -1 {
 			ch <- pos
 		}
 	}
 }
 
-func processCell(x, y int, lifeMap [][]bool) Position {
-	neighbors := getNeighbors(x, y, lifeMap)
+func changeNeighborOfCells(p Position, neighborMap [][]int16) {
+  x, y := p.X, p.Y
+  rows := len(neighborMap)
+  cols := len(neighborMap[0])
+  if p.Val {
+    neighborMap[(y-1+rows)%rows][(x-1+cols)%cols]++ // Top-left
+    neighborMap[(y-1+rows)%rows][x]++               // Top
+    neighborMap[(y-1+rows)%rows][(x+1)%cols]++      // Top-right
+    neighborMap[y][(x-1+cols)%cols]++               // Left
+    neighborMap[y][(x+1)%cols]++                    // Right
+    neighborMap[(y+1)%rows][(x-1+cols)%cols]++      // Bottom-left
+    neighborMap[(y+1)%rows][x]++                    // Bottom
+    neighborMap[(y+1)%rows][(x+1)%cols]++           // Bottom-right
+  } else {
+    neighborMap[(y-1+rows)%rows][(x-1+cols)%cols]-- // Top-left
+    neighborMap[(y-1+rows)%rows][x]--               // Top
+    neighborMap[(y-1+rows)%rows][(x+1)%cols]--      // Top-right
+    neighborMap[y][(x-1+cols)%cols]--               // Left
+    neighborMap[y][(x+1)%cols]--                    // Right
+    neighborMap[(y+1)%rows][(x-1+cols)%cols]--      // Bottom-left
+    neighborMap[(y+1)%rows][x]--                    // Bottom
+    neighborMap[(y+1)%rows][(x+1)%cols]--           // Bottom-right
+  }
+}
+
+func processCell(x, y int, lifeMap [][]bool, neighborMap [][]int16) Position {
+	neighbors := neighborMap[y][x]
 	if neighbors == 3 && !lifeMap[y][x] {
 		// fmt.Println("Turning ",x,y,"alive")
+
 		return Position{x, y, true}
 	}
-	if neighbors < 2 || neighbors > 3 && lifeMap[y][x] {
+	if (neighbors < 2 || neighbors > 3) && lifeMap[y][x] {
 		// fmt.Println("Killing ",x,y)
 		return Position{x, y, false}
 	}
