@@ -66,27 +66,82 @@ func main() {
 			case *sdl.QuitEvent:
 				fmt.Println("exit", t)
 				running = false
-			}
+			
+      case *sdl.KeyboardEvent:
+        if t.Type == sdl.KEYUP {
+          break
+        }
+        switch t.Keysym.Sym{
+        case sdl.K_w:
+          // implement logic for adding to the "top" of the array
+        case sdl.K_s:
+          clearWindow(surface, window)
+          h, width, height = expandWindowDown(window, width, height, h)
+          lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
+          renderLifeMap(lifeMap, width, height, surface)
+        }
+      }
 		}
-
+  
 		surface, err := window.GetSurface()
 		if err != nil {
 			panic(err)
 		}
 		passFrame(lifeMap, neighborMap, width, height, surface, ch)
+    avg = handleFrameTime(start, avg)
+    // fmt.Println(height)
 		err = window.UpdateSurface()
 		if err != nil {
 			panic(err)
 		}
-		frameTime := time.Since(start)
-		avg = (avg + frameTime) / 2
-		if time.Since(start) < 32*time.Millisecond {
-			time.Sleep(32*time.Millisecond - time.Since(start))
-		} else if frameTime > 32*time.Millisecond {
-			go fmt.Println("Long frame comp", frameTime)
-		}
 	}
 	fmt.Println("Frame avg time ", avg)
+}
+
+func clearWindow(surface *sdl.Surface, window *sdl.Window) {
+  width, height := window.GetSize()
+  renderCell(width, height, 0, 0, false, surface)
+}
+
+func renderLifeMap(lifeMap [][]bool, width, height int32, surface *sdl.Surface) {
+  for i := range lifeMap {
+		for j := range lifeMap[i] {
+			renderCell(width, height, j, i, lifeMap[i][j], surface)
+		}
+	}
+}
+
+func expandMapsDown(lifeMap [][]bool, neighborMap[][]int16) ([][]bool, [][]int16) {
+  lifeMap = append(lifeMap, make([]bool, len(lifeMap[0])))
+  neighborMap = append(neighborMap, make([]int16, len(neighborMap[0])))
+	for i := range neighborMap {
+	  for j := range neighborMap[i] {
+			neighborMap[i][j] = int16(getNeighbors(j, i, lifeMap))
+		}
+	}
+  return lifeMap, neighborMap
+}
+
+func expandWindowDown(window *sdl.Window, width, height int32, h int) (int, int32, int32) {
+	width, height = window.GetSize()
+  h++
+	height /= int32(h)
+	if width < height {
+		height = width
+	}
+	width = height
+  return h, width, height
+}
+
+func handleFrameTime(start time.Time, avg time.Duration) time.Duration {
+	frameTime := time.Since(start)
+	avg = (avg + frameTime) / 2
+	if time.Since(start) < 32*time.Millisecond {
+		time.Sleep(32*time.Millisecond - time.Since(start))
+	} else if frameTime > 32*time.Millisecond {
+		go fmt.Println("Long frame comp", frameTime)
+	}
+  return avg
 }
 
 func generateNeighborMap(lifeMap [][]bool) [][]int16 {
