@@ -57,10 +57,8 @@ func main() {
 	running := true
 	avg := time.Duration(0)
 	// fmt.Print("\033[H\033[2J")
-	ch := make(chan [][]bool, 60)
 	for running {
 		start := time.Now()
-
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch t := event.(type) {
 			case *sdl.QuitEvent:
@@ -76,13 +74,13 @@ func main() {
           // implement logic for adding to the "top" of the array
         case sdl.K_s:
           clearWindow(surface, window)
-          h, width, height = expandWindowDown(window, h)
+          h, width, height = expandWindowDown(window, h, width)
           lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
           renderLifeMap(lifeMap, width, height, surface)
         
         case sdl.K_d:
           clearWindow(surface, window)
-          w, width, height = expandWindowRight(window, w)
+          w, width, height = expandWindowRight(window, w, height)
           lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
         }
       }
@@ -92,7 +90,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		passFrame(lifeMap, neighborMap, width, height, surface, ch)
+		passFrame(lifeMap, neighborMap, width, height, surface)
     // fmt.Println(height)
 		err = window.UpdateSurface()
     avg = handleFrameTime(start, avg)
@@ -116,8 +114,8 @@ func expandMapsRight(lifeMap [][]bool, neighborMap[][]int16) ([][]bool, [][]int1
   return lifeMap, neighborMap
 }
 
-func expandWindowRight(window *sdl.Window, w int) (int, int32, int32) {
-  width, height := window.GetSize()
+func expandWindowRight(window *sdl.Window, w int, height int32) (int, int32, int32) {
+  width, _ := window.GetSize()
   w++
 	width /= int32(w)
 	if width < height {
@@ -151,8 +149,8 @@ func expandMapsDown(lifeMap [][]bool, neighborMap[][]int16) ([][]bool, [][]int16
   return lifeMap, neighborMap
 }
 
-func expandWindowDown(window *sdl.Window, h int) (int, int32, int32) {
-  width, height := window.GetSize()
+func expandWindowDown(window *sdl.Window, h int, width int32) (int, int32, int32) {
+  _ , height := window.GetSize()
   h++
 	height /= int32(h)
 	if width < height {
@@ -252,10 +250,7 @@ func makeLifeMap() [][]bool {
 	return lifeMap
 }
 
-func passFrame(lifeMap [][]bool, neighborMap [][]int16, width, height int32, surface *sdl.Surface, frameBuffer chan [][]bool) {
-	// printNeighborMap(neighborMap)
-	// printMap(lifeMap)
-	// fmt.Println(lifeMap)
+func passFrame(lifeMap [][]bool, neighborMap [][]int16, width, height int32, surface *sdl.Surface){
 	var wg sync.WaitGroup
 	ch := make(chan Position, (len(lifeMap) * len(lifeMap[1])))
 	for y := 0; y < len(lifeMap); y++ {
@@ -269,9 +264,9 @@ func passFrame(lifeMap [][]bool, neighborMap [][]int16, width, height int32, sur
 	close(ch)
 	for i := range ch {
 		lifeMap[i.Y][i.X] = i.Val
-		renderCell(width, height, i.X, i.Y, i.Val, surface)
-		changeNeighborOfCells(i, neighborMap)
-	}
+    renderCell(width, height, i.X, i.Y, i.Val, surface)
+	  changeNeighborOfCells(i, neighborMap)
+  }
 }
 
 func printNeighborMap(neighborMap [][]int16) {
