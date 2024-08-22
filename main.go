@@ -76,9 +76,14 @@ func main() {
           // implement logic for adding to the "top" of the array
         case sdl.K_s:
           clearWindow(surface, window)
-          h, width, height = expandWindowDown(window, width, height, h)
+          h, width, height = expandWindowDown(window, h)
           lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
           renderLifeMap(lifeMap, width, height, surface)
+        
+        case sdl.K_d:
+          clearWindow(surface, window)
+          w, width, height = expandWindowRight(window, w)
+          lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
         }
       }
 		}
@@ -88,14 +93,38 @@ func main() {
 			panic(err)
 		}
 		passFrame(lifeMap, neighborMap, width, height, surface, ch)
-    avg = handleFrameTime(start, avg)
     // fmt.Println(height)
 		err = window.UpdateSurface()
+    avg = handleFrameTime(start, avg)
 		if err != nil {
 			panic(err)
 		}
 	}
 	fmt.Println("Frame avg time ", avg)
+}
+
+func expandMapsRight(lifeMap [][]bool, neighborMap[][]int16) ([][]bool, [][]int16) {
+  for i := range neighborMap {
+    neighborMap[i] = append(neighborMap[i], 0)
+    lifeMap[i] = append(lifeMap[i], false)
+  }
+	for i := range neighborMap {
+	  for j := range neighborMap[i] {
+			neighborMap[i][j] = int16(getNeighbors(j, i, lifeMap))
+		}
+	}
+  return lifeMap, neighborMap
+}
+
+func expandWindowRight(window *sdl.Window, w int) (int, int32, int32) {
+  width, height := window.GetSize()
+  w++
+	width /= int32(w)
+	if width < height {
+		height = width
+	}
+	width = height
+  return w, width, height
 }
 
 func clearWindow(surface *sdl.Surface, window *sdl.Window) {
@@ -122,8 +151,8 @@ func expandMapsDown(lifeMap [][]bool, neighborMap[][]int16) ([][]bool, [][]int16
   return lifeMap, neighborMap
 }
 
-func expandWindowDown(window *sdl.Window, width, height int32, h int) (int, int32, int32) {
-	width, height = window.GetSize()
+func expandWindowDown(window *sdl.Window, h int) (int, int32, int32) {
+  width, height := window.GetSize()
   h++
 	height /= int32(h)
 	if width < height {
