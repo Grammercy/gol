@@ -58,6 +58,7 @@ func main() {
 	avg := time.Duration(0)
 	// fmt.Print("\033[H\033[2J")
 	for running {
+    // fmt.Println(height)
 		start := time.Now()
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch t := event.(type) {
@@ -70,7 +71,22 @@ func main() {
           break
         }
         switch t.Keysym.Sym{
+        case sdl.K_a:
+          clearWindow(surface, window)
+          w, width, height = expandWindowRight(window, w, height)
+          lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
+          for i := 0; i < len(lifeMap); i++ {
+            rotateRight(lifeMap[i], 1)
+            rotateRight(neighborMap[i], 1)
+          }
+          renderLifeMap(lifeMap, width, height, surface)
         case sdl.K_w:
+          clearWindow(surface, window)
+          h, width, height = expandWindowDown(window, h, width)
+          lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
+          rotateRight(lifeMap, 1)
+          rotateRight(neighborMap, 1)
+          renderLifeMap(lifeMap, width, height, surface)
           // implement logic for adding to the "top" of the array
         case sdl.K_s:
           clearWindow(surface, window)
@@ -82,6 +98,7 @@ func main() {
           clearWindow(surface, window)
           w, width, height = expandWindowRight(window, w, height)
           lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
+          renderLifeMap(lifeMap, width, height, surface)
         }
       }
 		}
@@ -91,7 +108,6 @@ func main() {
 			panic(err)
 		}
 		passFrame(lifeMap, neighborMap, width, height, surface)
-    // fmt.Println(height)
 		err = window.UpdateSurface()
     avg = handleFrameTime(start, avg)
 		if err != nil {
@@ -99,6 +115,14 @@ func main() {
 		}
 	}
 	fmt.Println("Frame avg time ", avg)
+}
+
+func rotateRight[T any](nums []T, k int) {
+   k %= len(nums)
+   new_array := make([]T, len(nums))
+   copy(new_array[:k], nums[len(nums)-k:])
+   copy(new_array[k:], nums[:len(nums)-k])
+   copy(nums, new_array)
 }
 
 func expandMapsRight(lifeMap [][]bool, neighborMap[][]int16) ([][]bool, [][]int16) {
