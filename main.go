@@ -71,6 +71,9 @@ func main() {
           break
         }
         switch t.Keysym.Sym{
+        case sdl.K_ESCAPE:
+          fmt.Println("Exit")
+          running = false
         case sdl.K_a:
           clearWindow(surface, window)
           w, width, height = expandWindowRight(window, w, height)
