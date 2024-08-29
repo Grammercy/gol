@@ -56,6 +56,7 @@ func main() {
 	// printNeighborMap(neighborMap)
 	running := true
 	avg := time.Duration(0)
+  paused := false
 	// fmt.Print("\033[H\033[2J")
 	for running {
     // fmt.Println(height)
@@ -71,7 +72,9 @@ func main() {
           break
         }
         switch t.Keysym.Sym{
-        case sdl.K_ESCAPE:
+        case sdl.K_SPACE:
+          paused = !paused
+        case sdl.K_ESCAPE, sdl.K_q:
           fmt.Println("Exit")
           running = false
         case sdl.K_a:
@@ -105,17 +108,18 @@ func main() {
         }
       }
 		}
-  
-		surface, err := window.GetSurface()
-		if err != nil {
-			panic(err)
-		}
-		passFrame(lifeMap, neighborMap, width, height, surface)
-		err = window.UpdateSurface()
-    avg = handleFrameTime(start, avg)
-		if err != nil {
-			panic(err)
-		}
+    if !paused{
+		  surface, err := window.GetSurface()
+		  if err != nil {
+			  panic(err)
+		  }
+		  passFrame(lifeMap, neighborMap, width, height, surface)
+		  err = window.UpdateSurface()
+      avg = handleFrameTime(start, avg)
+	  	if err != nil {
+			  panic(err)
+		  }
+    }
 	}
 	fmt.Println("Frame avg time ", avg)
 }
@@ -218,8 +222,13 @@ func renderCell(width, height int32, x, y int, alive bool, surface *sdl.Surface)
 		colour = sdl.Color{R: 255, G: 255, B: 255, A: 255}
 	}
 	pixel := sdl.MapRGBA(surface.Format, colour.R, colour.G, colour.B, colour.A)
-	err := surface.FillRect(&rect, pixel)
-	if err != nil {
+  // err := surface.Lock()
+  // if err != nil {
+    // panic(err)
+  // }
+  // defer surface.Unlock()
+  err := surface.FillRect(&rect, pixel)
+  if err != nil {
 		panic(err)
 	}
 }
