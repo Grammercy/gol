@@ -78,40 +78,40 @@ func main() {
           fmt.Println("Exit")
           running = false
         case sdl.K_a:
+          clearWindow(surface, window)
           switch t.Keysym.Mod{
           default:
-            clearWindow(surface, window)
             w, width, height = expandWindowRight(window, w, height)
             lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
             for i := 0; i < len(lifeMap); i++ {
               rotateRight(lifeMap[i], 1)
               rotateRight(neighborMap[i], 1)
             }
-            renderLifeMap(lifeMap, width, height, surface)
             case sdl.KMOD_LSHIFT:
-              clearWindow(surface, window)
               w--
-              width, _ = window.GetSize()
-              width /= int32(w)
-              if width < height {
-                height = width
-              }
-              width = height
+              width, height = updateWidthAndHeight(w, h, window)
               for i := 0; i < len(lifeMap); i++ {
                 lifeMap[i][0], neighborMap[i][0] = false, 0
                 lifeMap[i] = lifeMap[i][1:]
                 neighborMap[i] = neighborMap[i][1:]
               }
-              renderLifeMap(lifeMap, width, height, surface)
           }
+          renderLifeMap(lifeMap, width, height, surface)
         case sdl.K_w:
           clearWindow(surface, window)
-          h, width, height = expandWindowDown(window, h, width)
-          lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
-          rotateRight(lifeMap, 1)
-          rotateRight(neighborMap, 1)
+          switch t.Keysym.Mod{
+          default:
+            h, width, height = expandWindowDown(window, h, width)
+            lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
+            rotateRight(lifeMap, 1)
+            rotateRight(neighborMap, 1)
+          case sdl.KMOD_LSHIFT:
+            h--
+            width, height = updateWidthAndHeight(w, h, window)
+            lifeMap = lifeMap[1:]
+            neighborMap = neighborMap[1:]
+          }
           renderLifeMap(lifeMap, width, height, surface)
-          // implement logic for adding to the "top" of the array
         case sdl.K_s:
           clearWindow(surface, window)
           h, width, height = expandWindowDown(window, h, width)
@@ -149,6 +149,17 @@ func main() {
     }
 	}
 	fmt.Println("Frame avg time ", avg)
+}
+
+func updateWidthAndHeight(w, h int, window *sdl.Window) (int32, int32){
+  width, height := window.GetSize()
+  width /= int32(w)
+  height /= int32(h)
+  if width > height {
+    width = height
+  }
+  height = width
+  return width, height
 }
 
 func rotateRight[T any](nums []T, k int) {
