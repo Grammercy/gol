@@ -78,14 +78,32 @@ func main() {
           fmt.Println("Exit")
           running = false
         case sdl.K_a:
-          clearWindow(surface, window)
-          w, width, height = expandWindowRight(window, w, height)
-          lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
-          for i := 0; i < len(lifeMap); i++ {
-            rotateRight(lifeMap[i], 1)
-            rotateRight(neighborMap[i], 1)
+          switch t.Keysym.Mod{
+          default:
+            clearWindow(surface, window)
+            w, width, height = expandWindowRight(window, w, height)
+            lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
+            for i := 0; i < len(lifeMap); i++ {
+              rotateRight(lifeMap[i], 1)
+              rotateRight(neighborMap[i], 1)
+            }
+            renderLifeMap(lifeMap, width, height, surface)
+            case sdl.KMOD_LSHIFT:
+              clearWindow(surface, window)
+              w--
+              width, _ = window.GetSize()
+              width /= int32(w)
+              if width < height {
+                height = width
+              }
+              width = height
+              for i := 0; i < len(lifeMap); i++ {
+                lifeMap[i][0], neighborMap[i][0] = false, 0
+                lifeMap[i] = lifeMap[i][1:]
+                neighborMap[i] = neighborMap[i][1:]
+              }
+              renderLifeMap(lifeMap, width, height, surface)
           }
-          renderLifeMap(lifeMap, width, height, surface)
         case sdl.K_w:
           clearWindow(surface, window)
           h, width, height = expandWindowDown(window, h, width)
