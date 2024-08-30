@@ -99,7 +99,16 @@ func main() {
           h, width, height = expandWindowDown(window, h, width)
           lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
           renderLifeMap(lifeMap, width, height, surface)
-        
+        case sdl.K_f:
+          surface, err := window.GetSurface()
+          if err != nil {
+            panic(err)
+          }
+          passFrame(lifeMap, neighborMap, width, height, surface)
+          err = window.UpdateSurface()
+          if err != nil {
+            panic(err)
+          }
         case sdl.K_d:
           clearWindow(surface, window)
           w, width, height = expandWindowRight(window, w, height)
@@ -229,7 +238,7 @@ func renderCell(width, height int32, x, y int, alive bool, surface *sdl.Surface)
   // defer surface.Unlock()
   err := surface.FillRect(&rect, pixel)
   if err != nil {
-		panic(err)
+	  panic(err)
 	}
 }
 
