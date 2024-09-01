@@ -64,7 +64,7 @@ func main() {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch t := event.(type) {
 			case *sdl.QuitEvent:
-				fmt.Println("exit", t)
+				fmt.Println("exit")
 				running = false
 			
       case *sdl.KeyboardEvent:
@@ -72,6 +72,16 @@ func main() {
           break
         }
         switch t.Keysym.Sym{
+        case sdl.K_r:
+          clearWindow(surface, window)
+          randomizeMap(lifeMap)
+          neighborMap = generateNeighborMap(lifeMap)
+	        for i := range lifeMap {
+		        for j := range lifeMap[i] {
+			        renderCell(width, height, j, i, lifeMap[i][j], surface)
+		        }
+	        }
+          window.UpdateSurface()
         case sdl.K_SPACE:
           paused = !paused
         case sdl.K_ESCAPE, sdl.K_q:
@@ -113,9 +123,17 @@ func main() {
           }
           renderLifeMap(lifeMap, width, height, surface)
         case sdl.K_s:
-          clearWindow(surface, window)
-          h, width, height = expandWindowDown(window, h, width)
-          lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
+            clearWindow(surface, window)
+          switch t.Keysym.Mod{
+          default:
+            h, width, height = expandWindowDown(window, h, width)
+            lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
+          case sdl.KMOD_LSHIFT:
+            h--
+            width, height = updateWidthAndHeight(w, h, window)
+            lifeMap = lifeMap[:len(lifeMap) - 1]
+            neighborMap = neighborMap[:len(neighborMap) - 1]
+          }
           renderLifeMap(lifeMap, width, height, surface)
         case sdl.K_f:
           surface, err := window.GetSurface()
@@ -129,8 +147,19 @@ func main() {
           }
         case sdl.K_d:
           clearWindow(surface, window)
-          w, width, height = expandWindowRight(window, w, height)
-          lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
+          switch t.Keysym.Mod{
+          default:
+            w, width, height = expandWindowRight(window, w, height)
+            lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
+          case sdl.KMOD_LSHIFT:
+            w--
+            width, height = updateWidthAndHeight(w, h, window)
+            for i := 0; i < len(lifeMap); i++ {
+              lifeMap[i][len(lifeMap[i])-1], neighborMap[i][len(lifeMap[i])-1] = false, 0
+              lifeMap[i] = lifeMap[i][:len(lifeMap[i])-1]
+              neighborMap[i] = neighborMap[i][:len(lifeMap[i])-1]
+            }        
+          }
           renderLifeMap(lifeMap, width, height, surface)
         }
       }
