@@ -66,7 +66,16 @@ func main() {
 			case *sdl.QuitEvent:
 				fmt.Println("exit")
 				running = false
-
+      case *sdl.MouseButtonEvent:
+        if t.Type == sdl.MOUSEBUTTONUP {
+          break
+        }
+        x, y := int(t.X / width), int(t.Y / height)
+        lifeMap[y][x] = !lifeMap[y][x]
+        p := Position{x, y, lifeMap[y][x]}
+        changeNeighborOfCells(p, neighborMap)
+				renderLifeMap(lifeMap, width, height, surface)
+				window.UpdateSurface()
 			case *sdl.KeyboardEvent:
 				if t.Type == sdl.KEYUP {
 					break
@@ -76,11 +85,7 @@ func main() {
 					clearWindow(surface, window)
 					randomizeMap(lifeMap)
 					neighborMap = generateNeighborMap(lifeMap)
-					for i := range lifeMap {
-						for j := range lifeMap[i] {
-							renderCell(width, height, j, i, lifeMap[i][j], surface)
-						}
-					}
+					renderLifeMap(lifeMap, width, height, surface)
 					window.UpdateSurface()
 				case sdl.K_SPACE:
 					paused = !paused
@@ -107,6 +112,7 @@ func main() {
 						}
 					}
 					renderLifeMap(lifeMap, width, height, surface)
+					window.UpdateSurface()
 				case sdl.K_w:
 					clearWindow(surface, window)
 					switch t.Keysym.Mod {
@@ -122,6 +128,7 @@ func main() {
 						neighborMap = neighborMap[1:]
 					}
 					renderLifeMap(lifeMap, width, height, surface)
+					window.UpdateSurface()
 				case sdl.K_s:
 					clearWindow(surface, window)
 					switch t.Keysym.Mod {
@@ -135,6 +142,7 @@ func main() {
 						neighborMap = neighborMap[:len(neighborMap)-1]
 					}
 					renderLifeMap(lifeMap, width, height, surface)
+					window.UpdateSurface()
 				case sdl.K_f:
 					surface, err := window.GetSurface()
 					if err != nil {
@@ -161,6 +169,7 @@ func main() {
 						}
 					}
 					renderLifeMap(lifeMap, width, height, surface)
+					window.UpdateSurface()
 				}
 			}
 		}
@@ -169,8 +178,8 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			passFrame(lifeMap, neighborMap, width, height, surface)
-			err = window.UpdateSurface()
+		  passFrame(lifeMap, neighborMap, width, height, surface)  
+      err = window.UpdateSurface()
 			avg = handleFrameTime(start, avg)
 			if err != nil {
 				panic(err)
@@ -263,7 +272,7 @@ func handleFrameTime(start time.Time, avg time.Duration) time.Duration {
 	avg = (avg + frameTime) / 2
 	if time.Since(start) < 32*time.Millisecond {
 		time.Sleep(32*time.Millisecond - time.Since(start))
-	} else if frameTime > 32*time.Millisecond {
+	} else if frameTime > 100*time.Millisecond {
 		go fmt.Println("Long frame comp", frameTime)
 	}
 	return avg
