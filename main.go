@@ -163,9 +163,9 @@ func main() {
 						w--
 						width, height = updateWidthAndHeight(w, h, window)
 						for i := 0; i < len(lifeMap); i++ {
-							lifeMap[i][len(lifeMap[i])-1], neighborMap[i][len(lifeMap[i])-1] = false, 0
+							lifeMap[i][len(lifeMap[i])-1], neighborMap[i][len(neighborMap[i])-1] = false, 0
 							lifeMap[i] = lifeMap[i][:len(lifeMap[i])-1]
-							neighborMap[i] = neighborMap[i][:len(lifeMap[i])-1]
+							neighborMap[i] = neighborMap[i][:len(neighborMap[i])-1]
 						}
 					}
 					renderLifeMap(lifeMap, width, height, surface)
