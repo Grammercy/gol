@@ -56,206 +56,206 @@ func main() {
 	// printNeighborMap(neighborMap)
 	running := true
 	avg := time.Duration(0)
-  paused := false
+	paused := false
 	// fmt.Print("\033[H\033[2J")
 	for running {
-    // fmt.Println(height)
+		// fmt.Println(height)
 		start := time.Now()
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 			switch t := event.(type) {
 			case *sdl.QuitEvent:
 				fmt.Println("exit")
 				running = false
-			
-      case *sdl.KeyboardEvent:
-        if t.Type == sdl.KEYUP {
-          break
-        }
-        switch t.Keysym.Sym{
-        case sdl.K_r:
-          clearWindow(surface, window)
-          randomizeMap(lifeMap)
-          neighborMap = generateNeighborMap(lifeMap)
-	        for i := range lifeMap {
-		        for j := range lifeMap[i] {
-			        renderCell(width, height, j, i, lifeMap[i][j], surface)
-		        }
-	        }
-          window.UpdateSurface()
-        case sdl.K_SPACE:
-          paused = !paused
-        case sdl.K_ESCAPE, sdl.K_q:
-          fmt.Println("Exit")
-          running = false
-        case sdl.K_a:
-          clearWindow(surface, window)
-          switch t.Keysym.Mod{
-          default:
-            w, width, height = expandWindowRight(window, w, height)
-            lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
-            for i := 0; i < len(lifeMap); i++ {
-              rotateRight(lifeMap[i], 1)
-              rotateRight(neighborMap[i], 1)
-            }
-            case sdl.KMOD_LSHIFT:
-              w--
-              width, height = updateWidthAndHeight(w, h, window)
-              for i := 0; i < len(lifeMap); i++ {
-                lifeMap[i][0], neighborMap[i][0] = false, 0
-                lifeMap[i] = lifeMap[i][1:]
-                neighborMap[i] = neighborMap[i][1:]
-              }
-          }
-          renderLifeMap(lifeMap, width, height, surface)
-        case sdl.K_w:
-          clearWindow(surface, window)
-          switch t.Keysym.Mod{
-          default:
-            h, width, height = expandWindowDown(window, h, width)
-            lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
-            rotateRight(lifeMap, 1)
-            rotateRight(neighborMap, 1)
-          case sdl.KMOD_LSHIFT:
-            h--
-            width, height = updateWidthAndHeight(w, h, window)
-            lifeMap = lifeMap[1:]
-            neighborMap = neighborMap[1:]
-          }
-          renderLifeMap(lifeMap, width, height, surface)
-        case sdl.K_s:
-            clearWindow(surface, window)
-          switch t.Keysym.Mod{
-          default:
-            h, width, height = expandWindowDown(window, h, width)
-            lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
-          case sdl.KMOD_LSHIFT:
-            h--
-            width, height = updateWidthAndHeight(w, h, window)
-            lifeMap = lifeMap[:len(lifeMap) - 1]
-            neighborMap = neighborMap[:len(neighborMap) - 1]
-          }
-          renderLifeMap(lifeMap, width, height, surface)
-        case sdl.K_f:
-          surface, err := window.GetSurface()
-          if err != nil {
-            panic(err)
-          }
-          passFrame(lifeMap, neighborMap, width, height, surface)
-          err = window.UpdateSurface()
-          if err != nil {
-            panic(err)
-          }
-        case sdl.K_d:
-          clearWindow(surface, window)
-          switch t.Keysym.Mod{
-          default:
-            w, width, height = expandWindowRight(window, w, height)
-            lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
-          case sdl.KMOD_LSHIFT:
-            w--
-            width, height = updateWidthAndHeight(w, h, window)
-            for i := 0; i < len(lifeMap); i++ {
-              lifeMap[i][len(lifeMap[i])-1], neighborMap[i][len(lifeMap[i])-1] = false, 0
-              lifeMap[i] = lifeMap[i][:len(lifeMap[i])-1]
-              neighborMap[i] = neighborMap[i][:len(lifeMap[i])-1]
-            }        
-          }
-          renderLifeMap(lifeMap, width, height, surface)
-        }
-      }
+
+			case *sdl.KeyboardEvent:
+				if t.Type == sdl.KEYUP {
+					break
+				}
+				switch t.Keysym.Sym {
+				case sdl.K_r:
+					clearWindow(surface, window)
+					randomizeMap(lifeMap)
+					neighborMap = generateNeighborMap(lifeMap)
+					for i := range lifeMap {
+						for j := range lifeMap[i] {
+							renderCell(width, height, j, i, lifeMap[i][j], surface)
+						}
+					}
+					window.UpdateSurface()
+				case sdl.K_SPACE:
+					paused = !paused
+				case sdl.K_ESCAPE, sdl.K_q:
+					fmt.Println("Exit")
+					running = false
+				case sdl.K_a:
+					clearWindow(surface, window)
+					switch t.Keysym.Mod {
+					default:
+						w, width, height = expandWindowRight(window, w, height)
+						lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
+						for i := 0; i < len(lifeMap); i++ {
+							rotateRight(lifeMap[i], 1)
+							rotateRight(neighborMap[i], 1)
+						}
+					case sdl.KMOD_LSHIFT:
+						w--
+						width, height = updateWidthAndHeight(w, h, window)
+						for i := 0; i < len(lifeMap); i++ {
+							lifeMap[i][0], neighborMap[i][0] = false, 0
+							lifeMap[i] = lifeMap[i][1:]
+							neighborMap[i] = neighborMap[i][1:]
+						}
+					}
+					renderLifeMap(lifeMap, width, height, surface)
+				case sdl.K_w:
+					clearWindow(surface, window)
+					switch t.Keysym.Mod {
+					default:
+						h, width, height = expandWindowDown(window, h, width)
+						lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
+						rotateRight(lifeMap, 1)
+						rotateRight(neighborMap, 1)
+					case sdl.KMOD_LSHIFT:
+						h--
+						width, height = updateWidthAndHeight(w, h, window)
+						lifeMap = lifeMap[1:]
+						neighborMap = neighborMap[1:]
+					}
+					renderLifeMap(lifeMap, width, height, surface)
+				case sdl.K_s:
+					clearWindow(surface, window)
+					switch t.Keysym.Mod {
+					default:
+						h, width, height = expandWindowDown(window, h, width)
+						lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
+					case sdl.KMOD_LSHIFT:
+						h--
+						width, height = updateWidthAndHeight(w, h, window)
+						lifeMap = lifeMap[:len(lifeMap)-1]
+						neighborMap = neighborMap[:len(neighborMap)-1]
+					}
+					renderLifeMap(lifeMap, width, height, surface)
+				case sdl.K_f:
+					surface, err := window.GetSurface()
+					if err != nil {
+						panic(err)
+					}
+					passFrame(lifeMap, neighborMap, width, height, surface)
+					err = window.UpdateSurface()
+					if err != nil {
+						panic(err)
+					}
+				case sdl.K_d:
+					clearWindow(surface, window)
+					switch t.Keysym.Mod {
+					default:
+						w, width, height = expandWindowRight(window, w, height)
+						lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
+					case sdl.KMOD_LSHIFT:
+						w--
+						width, height = updateWidthAndHeight(w, h, window)
+						for i := 0; i < len(lifeMap); i++ {
+							lifeMap[i][len(lifeMap[i])-1], neighborMap[i][len(lifeMap[i])-1] = false, 0
+							lifeMap[i] = lifeMap[i][:len(lifeMap[i])-1]
+							neighborMap[i] = neighborMap[i][:len(lifeMap[i])-1]
+						}
+					}
+					renderLifeMap(lifeMap, width, height, surface)
+				}
+			}
 		}
-    if !paused{
-		  surface, err := window.GetSurface()
-		  if err != nil {
-			  panic(err)
-		  }
-		  passFrame(lifeMap, neighborMap, width, height, surface)
-		  err = window.UpdateSurface()
-      avg = handleFrameTime(start, avg)
-	  	if err != nil {
-			  panic(err)
-		  }
-    }
+		if !paused {
+			surface, err := window.GetSurface()
+			if err != nil {
+				panic(err)
+			}
+			passFrame(lifeMap, neighborMap, width, height, surface)
+			err = window.UpdateSurface()
+			avg = handleFrameTime(start, avg)
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
 	fmt.Println("Frame avg time ", avg)
 }
 
-func updateWidthAndHeight(w, h int, window *sdl.Window) (int32, int32){
-  width, height := window.GetSize()
-  width /= int32(w)
-  height /= int32(h)
-  if width > height {
-    width = height
-  }
-  height = width
-  return width, height
+func updateWidthAndHeight(w, h int, window *sdl.Window) (int32, int32) {
+	width, height := window.GetSize()
+	width /= int32(w)
+	height /= int32(h)
+	if width > height {
+		width = height
+	}
+	height = width
+	return width, height
 }
 
 func rotateRight[T any](nums []T, k int) {
-   k %= len(nums)
-   new_array := make([]T, len(nums))
-   copy(new_array[:k], nums[len(nums)-k:])
-   copy(new_array[k:], nums[:len(nums)-k])
-   copy(nums, new_array)
+	k %= len(nums)
+	new_array := make([]T, len(nums))
+	copy(new_array[:k], nums[len(nums)-k:])
+	copy(new_array[k:], nums[:len(nums)-k])
+	copy(nums, new_array)
 }
 
-func expandMapsRight(lifeMap [][]bool, neighborMap[][]int16) ([][]bool, [][]int16) {
-  for i := range neighborMap {
-    neighborMap[i] = append(neighborMap[i], 0)
-    lifeMap[i] = append(lifeMap[i], false)
-  }
+func expandMapsRight(lifeMap [][]bool, neighborMap [][]int16) ([][]bool, [][]int16) {
 	for i := range neighborMap {
-	  for j := range neighborMap[i] {
+		neighborMap[i] = append(neighborMap[i], 0)
+		lifeMap[i] = append(lifeMap[i], false)
+	}
+	for i := range neighborMap {
+		for j := range neighborMap[i] {
 			neighborMap[i][j] = int16(getNeighbors(j, i, lifeMap))
 		}
 	}
-  return lifeMap, neighborMap
+	return lifeMap, neighborMap
 }
 
 func expandWindowRight(window *sdl.Window, w int, height int32) (int, int32, int32) {
-  width, _ := window.GetSize()
-  w++
+	width, _ := window.GetSize()
+	w++
 	width /= int32(w)
 	if width < height {
 		height = width
 	}
 	width = height
-  return w, width, height
+	return w, width, height
 }
 
 func clearWindow(surface *sdl.Surface, window *sdl.Window) {
-  width, height := window.GetSize()
-  renderCell(width, height, 0, 0, false, surface)
+	width, height := window.GetSize()
+	renderCell(width, height, 0, 0, false, surface)
 }
 
 func renderLifeMap(lifeMap [][]bool, width, height int32, surface *sdl.Surface) {
-  for i := range lifeMap {
+	for i := range lifeMap {
 		for j := range lifeMap[i] {
 			renderCell(width, height, j, i, lifeMap[i][j], surface)
 		}
 	}
 }
 
-func expandMapsDown(lifeMap [][]bool, neighborMap[][]int16) ([][]bool, [][]int16) {
-  lifeMap = append(lifeMap, make([]bool, len(lifeMap[0])))
-  neighborMap = append(neighborMap, make([]int16, len(neighborMap[0])))
+func expandMapsDown(lifeMap [][]bool, neighborMap [][]int16) ([][]bool, [][]int16) {
+	lifeMap = append(lifeMap, make([]bool, len(lifeMap[0])))
+	neighborMap = append(neighborMap, make([]int16, len(neighborMap[0])))
 	for i := range neighborMap {
-	  for j := range neighborMap[i] {
+		for j := range neighborMap[i] {
 			neighborMap[i][j] = int16(getNeighbors(j, i, lifeMap))
 		}
 	}
-  return lifeMap, neighborMap
+	return lifeMap, neighborMap
 }
 
 func expandWindowDown(window *sdl.Window, h int, width int32) (int, int32, int32) {
-  _ , height := window.GetSize()
-  h++
+	_, height := window.GetSize()
+	h++
 	height /= int32(h)
 	if width < height {
 		height = width
 	}
 	width = height
-  return h, width, height
+	return h, width, height
 }
 
 func handleFrameTime(start time.Time, avg time.Duration) time.Duration {
@@ -266,7 +266,7 @@ func handleFrameTime(start time.Time, avg time.Duration) time.Duration {
 	} else if frameTime > 32*time.Millisecond {
 		go fmt.Println("Long frame comp", frameTime)
 	}
-  return avg
+	return avg
 }
 
 func generateNeighborMap(lifeMap [][]bool) [][]int16 {
@@ -289,14 +289,14 @@ func renderCell(width, height int32, x, y int, alive bool, surface *sdl.Surface)
 		colour = sdl.Color{R: 255, G: 255, B: 255, A: 255}
 	}
 	pixel := sdl.MapRGBA(surface.Format, colour.R, colour.G, colour.B, colour.A)
-  // err := surface.Lock()
-  // if err != nil {
-    // panic(err)
-  // }
-  // defer surface.Unlock()
-  err := surface.FillRect(&rect, pixel)
-  if err != nil {
-	  panic(err)
+	// err := surface.Lock()
+	// if err != nil {
+	// panic(err)
+	// }
+	// defer surface.Unlock()
+	err := surface.FillRect(&rect, pixel)
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -353,7 +353,7 @@ func makeLifeMap() [][]bool {
 	return lifeMap
 }
 
-func passFrame(lifeMap [][]bool, neighborMap [][]int16, width, height int32, surface *sdl.Surface){
+func passFrame(lifeMap [][]bool, neighborMap [][]int16, width, height int32, surface *sdl.Surface) {
 	var wg sync.WaitGroup
 	ch := make(chan Position, (len(lifeMap) * len(lifeMap[1])))
 	for y := 0; y < len(lifeMap); y++ {
@@ -367,9 +367,9 @@ func passFrame(lifeMap [][]bool, neighborMap [][]int16, width, height int32, sur
 	close(ch)
 	for i := range ch {
 		lifeMap[i.Y][i.X] = i.Val
-    renderCell(width, height, i.X, i.Y, i.Val, surface)
-	  changeNeighborOfCells(i, neighborMap)
-  }
+		renderCell(width, height, i.X, i.Y, i.Val, surface)
+		changeNeighborOfCells(i, neighborMap)
+	}
 }
 
 func printNeighborMap(neighborMap [][]int16) {
