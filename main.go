@@ -57,6 +57,7 @@ func main() {
 	running := true
 	avg := time.Duration(0)
 	paused := false
+  dragging := false
 	// fmt.Print("\033[H\033[2J")
 	for running {
 		// fmt.Println(height)
@@ -66,10 +67,20 @@ func main() {
 			case *sdl.QuitEvent:
 				fmt.Println("exit")
 				running = false
+      case *sdl.MouseMotionEvent:
+        if dragging {
+          x := t.X / width
+          y := t.Y / height
+          lifeMap[y][x] = !lifeMap[y][x]
+          changeNeighborOfCells(Position{int(x), int(y), lifeMap[y][x]}, neighborMap)
+          renderCell(width, height, int(x), int(y), lifeMap[y][x], surface)
+        }
       case *sdl.MouseButtonEvent:
-        if t.Type == sdl.MOUSEBUTTONUP {
+        if t.State != sdl.PRESSED {
+          dragging = false
           break
         }
+        dragging = true
         x, y := int(t.X / width), int(t.Y / height)
         lifeMap[y][x] = !lifeMap[y][x]
         p := Position{x, y, lifeMap[y][x]}
@@ -185,6 +196,10 @@ func main() {
 				panic(err)
 			}
 		}
+    err := window.UpdateSurface()
+    if err != nil {
+      panic(err)
+    }
 	}
 	fmt.Println("Frame avg time ", avg)
 }
