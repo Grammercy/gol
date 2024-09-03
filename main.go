@@ -58,6 +58,7 @@ func main() {
 	avg := time.Duration(0)
 	paused := false
   dragging := false
+  draggingState := true
 	// fmt.Print("\033[H\033[2J")
 	for running {
 		// fmt.Println(height)
@@ -71,18 +72,20 @@ func main() {
         if dragging {
           x := t.X / width
           y := t.Y / height
-          lifeMap[y][x] = !lifeMap[y][x]
+          lifeMap[y][x] = draggingState 
           changeNeighborOfCells(Position{int(x), int(y), lifeMap[y][x]}, neighborMap)
           renderCell(width, height, int(x), int(y), lifeMap[y][x], surface)
         }
       case *sdl.MouseButtonEvent:
         if t.State != sdl.PRESSED {
           dragging = false
+          neighborMap = generateNeighborMap(lifeMap)
           break
         }
         dragging = true
         x, y := int(t.X / width), int(t.Y / height)
         lifeMap[y][x] = !lifeMap[y][x]
+        draggingState = lifeMap[y][x]
         p := Position{x, y, lifeMap[y][x]}
         changeNeighborOfCells(p, neighborMap)
 				renderLifeMap(lifeMap, width, height, surface)
