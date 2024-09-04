@@ -72,18 +72,27 @@ func main() {
 				if dragging {
 					x := t.X / width
 					y := t.Y / height
+					if int(y) >= len(lifeMap) || int(x) >= len(lifeMap[y]) {
+						break
+					}
 					lifeMap[y][x] = draggingState
 					changeNeighborOfCells(Position{int(x), int(y), lifeMap[y][x]}, neighborMap)
 					renderCell(width, height, int(x), int(y), lifeMap[y][x], surface)
+					neighborMap = generateNeighborMap(lifeMap)
+          go func() {
+					  window.UpdateSurface()
+          }()
 				}
 			case *sdl.MouseButtonEvent:
 				if t.State != sdl.PRESSED {
 					dragging = false
-					neighborMap = generateNeighborMap(lifeMap)
 					break
 				}
 				dragging = true
 				x, y := int(t.X/width), int(t.Y/height)
+				if y >= len(lifeMap) || x >= len(lifeMap[y]) {
+					break
+				}
 				lifeMap[y][x] = !lifeMap[y][x]
 				draggingState = lifeMap[y][x]
 				p := Position{x, y, lifeMap[y][x]}
