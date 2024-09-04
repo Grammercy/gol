@@ -203,6 +203,14 @@ func main() {
 					go func() {
 						window.UpdateSurface()
 					}()
+				case sdl.K_c:
+          h, w := len(lifeMap), len(lifeMap[0])
+          lifeMap = make([][]bool, h)
+          for i := 0; i < len(lifeMap); i++ {
+            lifeMap[i] = make([]bool, w)
+          }
+          neighborMap = generateNeighborMap(lifeMap)
+          renderLifeMap(lifeMap, width, height, surface)
 				}
 			}
 		}
@@ -331,6 +339,9 @@ func generateNeighborMap(lifeMap [][]bool) [][]int16 {
 func renderCell(width, height int32, x, y int, alive bool, surface *sdl.Surface) {
 	rect := sdl.Rect{int32(x) * width, int32(y) * height, width, height}
 	colour := sdl.Color{R: 0, G: 0, B: 0, A: 255}
+	if width == height {
+		colour = sdl.Color{R: 25, G: 25, B: 25, A: 255}
+	}
 	if alive {
 		colour = sdl.Color{R: 255, G: 255, B: 255, A: 255}
 	}
