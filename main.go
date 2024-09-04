@@ -79,9 +79,9 @@ func main() {
 					changeNeighborOfCells(Position{int(x), int(y), lifeMap[y][x]}, neighborMap)
 					renderCell(width, height, int(x), int(y), lifeMap[y][x], surface)
 					neighborMap = generateNeighborMap(lifeMap)
-          go func() {
-					  window.UpdateSurface()
-          }()
+					go func() {
+						window.UpdateSurface()
+					}()
 				}
 			case *sdl.MouseButtonEvent:
 				if t.State != sdl.PRESSED {
@@ -109,7 +109,9 @@ func main() {
 					randomizeMap(lifeMap)
 					neighborMap = generateNeighborMap(lifeMap)
 					renderLifeMap(lifeMap, width, height, surface)
-					window.UpdateSurface()
+					go func() {
+						window.UpdateSurface()
+					}()
 				case sdl.K_SPACE:
 					paused = !paused
 				case sdl.K_ESCAPE, sdl.K_q:
@@ -135,7 +137,9 @@ func main() {
 						}
 					}
 					renderLifeMap(lifeMap, width, height, surface)
-					window.UpdateSurface()
+					go func() {
+						window.UpdateSurface()
+					}()
 				case sdl.K_w:
 					clearWindow(surface, window)
 					switch t.Keysym.Mod {
@@ -151,7 +155,9 @@ func main() {
 						neighborMap = neighborMap[1:]
 					}
 					renderLifeMap(lifeMap, width, height, surface)
-					window.UpdateSurface()
+					go func() {
+						window.UpdateSurface()
+					}()
 				case sdl.K_s:
 					clearWindow(surface, window)
 					switch t.Keysym.Mod {
@@ -165,7 +171,9 @@ func main() {
 						neighborMap = neighborMap[:len(neighborMap)-1]
 					}
 					renderLifeMap(lifeMap, width, height, surface)
-					window.UpdateSurface()
+					go func() {
+						window.UpdateSurface()
+					}()
 				case sdl.K_f:
 					surface, err := window.GetSurface()
 					if err != nil {
@@ -192,7 +200,9 @@ func main() {
 						}
 					}
 					renderLifeMap(lifeMap, width, height, surface)
-					window.UpdateSurface()
+					go func() {
+						window.UpdateSurface()
+					}()
 				}
 			}
 		}
