@@ -56,14 +56,15 @@ func main() {
 			lifeType = convertStringToLifeType("12345/3/2")
 		case "repl":
 			lifeType = convertStringToLifeType("1357/1357/2")
+    case "wall":
+      lifeType = convertStringToLifeType("2345/45678/2")
+    case "34":
+      lifeType = convertStringToLifeType("34/34/2")
+    // case "star":
+      // lifeType = convertStringToLifeType("3456/278/8")
 		}
 	}
 	lifeMap := makeLifeMap()
-  for y := 0; y < len(lifeMap); y++ {
-    for x := 0; x < len(lifeMap[y]); x++ {
-      lifeMap[y][x].Pos = Position{x, y}
-    }
-  }
 	err := sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
 		panic(err)
@@ -382,6 +383,9 @@ func renderCell(width, height int32, x, y int, life Life, surface *sdl.Surface) 
 	if life.Alive {
 		colour = sdl.Color{R: 255, G: 255, B: 255, A: 255}
 	}
+  if life.Locked > 0 {
+    colour = sdl.Color{R: (255/life.Locked), G: (255/life.Locked), B: 255, A: 255}
+  }
 	pixel := sdl.MapRGBA(surface.Format, colour.R, colour.G, colour.B, colour.A)
 	// err := surface.Lock()
 	// if err != nil {
@@ -444,12 +448,17 @@ func makeLifeMap() [][]Life {
 	for i := 0; i < len(lifeMap); i++ {
 		lifeMap[i] = make([]Life, width)
 	}
+  for y := 0; y < len(lifeMap); y++ {
+    for x := 0; x < len(lifeMap[y]); x++ {
+      lifeMap[y][x].Pos = Position{x, y}
+    }
+  }
 	return lifeMap
 }
 
 func passFrame(lifeMap [][]Life, width, height int32, surface *sdl.Surface, lifeType [][]int) {
 	var wg sync.WaitGroup
-	ch := make(chan Life, (len(lifeMap) * len(lifeMap[1])))
+	ch := make(chan Life, (len(lifeMap) * len(lifeMap[0])))
 	for y := 0; y < len(lifeMap); y++ {
 		wg.Add(1)
 		go func() {
@@ -519,6 +528,9 @@ func processCell(x, y int, lifeMap [][]Life, lifeType [][]int) Life {
   change.Pos.Y = y
   change.Alive = !change.Alive
 	neighbors := lifeMap[y][x].Neighbors
+  if change.Locked > 0 {
+    change.Locked--
+  }
 	if !alive {
 		for i := 0; i < len(lifeType[1]); i++ {
 			if neighbors == uint8(lifeType[1][i]) {
@@ -532,6 +544,7 @@ func processCell(x, y int, lifeMap [][]Life, lifeType [][]int) Life {
 				return stay
 			}
 		}
+    change.Locked = uint8(lifeType[2][0]-2)
 		return change
 	}
 	return stay
