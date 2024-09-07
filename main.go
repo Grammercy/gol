@@ -13,9 +13,17 @@ import (
 )
 
 type Position struct {
-	X   int
-	Y   int
-	Val bool
+	X int
+	Y int
+}
+
+type Life struct {
+	Pos       Position
+	Neighbors uint8
+	Alive     bool
+	Locked    uint8
+	Color     sdl.Color
+	Rules     [][]int
 }
 
 func convertStringToLifeType(str string) [][]int {
@@ -50,8 +58,12 @@ func main() {
 			lifeType = convertStringToLifeType("1357/1357/2")
 		}
 	}
-	fmt.Println(lifeType)
 	lifeMap := makeLifeMap()
+  for y := 0; y < len(lifeMap); y++ {
+    for x := 0; x < len(lifeMap[y]); x++ {
+      lifeMap[y][x].Pos = Position{x, y}
+    }
+  }
 	err := sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
 		panic(err)
@@ -69,7 +81,6 @@ func main() {
 	w, err := strconv.Atoi(os.Args[1])
 	h, err := strconv.Atoi(os.Args[2])
 	width, height := window.GetSize()
-	width /= int32(w)
 	height /= int32(h)
 	if width < height {
 		height = width
@@ -81,7 +92,7 @@ func main() {
 	randomizeMap(lifeMap)
 	// lifeMap[1][1] = true
 	// lifeMap[0][1], lifeMap[1][2], lifeMap[2][0], lifeMap[2][1], lifeMap[2][2] = true, true, true, true, true
-	neighborMap := generateNeighborMap(lifeMap)
+	lifeMap = updateNeighbors(lifeMap)
 	for i := range lifeMap {
 		for j := range lifeMap[i] {
 			renderCell(width, height, j, i, lifeMap[i][j], surface)
@@ -109,10 +120,12 @@ func main() {
 					if int(y) >= len(lifeMap) || int(x) >= len(lifeMap[y]) {
 						break
 					}
-					lifeMap[y][x] = draggingState
-					changeNeighborOfCells(Position{int(x), int(y), lifeMap[y][x]}, neighborMap)
+					lifeMap[y][x].Alive = draggingState
+          life := Life{}
+          life.Pos.X, life.Pos.Y, life.Alive = int(x), int(y), lifeMap[y][x].Alive
+					changeNeighborOfCells(life, lifeMap)
+          lifeMap = updateNeighbors(lifeMap)
 					renderCell(width, height, int(x), int(y), lifeMap[y][x], surface)
-					neighborMap = generateNeighborMap(lifeMap)
 					go func() {
 						window.UpdateSurface()
 					}()
@@ -127,10 +140,12 @@ func main() {
 				if y >= len(lifeMap) || x >= len(lifeMap[y]) {
 					break
 				}
-				lifeMap[y][x] = !lifeMap[y][x]
-				draggingState = lifeMap[y][x]
-				p := Position{x, y, lifeMap[y][x]}
-				changeNeighborOfCells(p, neighborMap)
+				lifeMap[y][x].Alive = !lifeMap[y][x].Alive
+				draggingState = lifeMap[y][x].Alive
+				p := Position{x, y}
+        life := Life{}
+        life.Pos, life.Alive = p, draggingState
+				changeNeighborOfCells(life, lifeMap)
 				renderLifeMap(lifeMap, width, height, surface)
 				window.UpdateSurface()
 			case *sdl.KeyboardEvent:
@@ -141,7 +156,7 @@ func main() {
 				case sdl.K_r:
 					clearWindow(surface, window)
 					randomizeMap(lifeMap)
-					neighborMap = generateNeighborMap(lifeMap)
+					lifeMap = updateNeighbors(lifeMap)
 					renderLifeMap(lifeMap, width, height, surface)
 					go func() {
 						window.UpdateSurface()
@@ -156,18 +171,16 @@ func main() {
 					switch t.Keysym.Mod {
 					default:
 						w, width, height = expandWindowRight(window, w, height)
-						lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
+						lifeMap = expandMapsRight(lifeMap)
 						for i := 0; i < len(lifeMap); i++ {
 							rotateRight(lifeMap[i], 1)
-							rotateRight(neighborMap[i], 1)
 						}
 					case sdl.KMOD_LSHIFT:
 						w--
 						width, height = updateWidthAndHeight(w, h, window)
 						for i := 0; i < len(lifeMap); i++ {
-							lifeMap[i][0], neighborMap[i][0] = false, 0
+							lifeMap[i][0].Alive, lifeMap[i][0].Neighbors = false, 0
 							lifeMap[i] = lifeMap[i][1:]
-							neighborMap[i] = neighborMap[i][1:]
 						}
 					}
 					renderLifeMap(lifeMap, width, height, surface)
@@ -179,14 +192,12 @@ func main() {
 					switch t.Keysym.Mod {
 					default:
 						h, width, height = expandWindowDown(window, h, width)
-						lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
+						lifeMap = expandMapsDown(lifeMap)
 						rotateRight(lifeMap, 1)
-						rotateRight(neighborMap, 1)
 					case sdl.KMOD_LSHIFT:
 						h--
 						width, height = updateWidthAndHeight(w, h, window)
 						lifeMap = lifeMap[1:]
-						neighborMap = neighborMap[1:]
 					}
 					renderLifeMap(lifeMap, width, height, surface)
 					go func() {
@@ -197,12 +208,11 @@ func main() {
 					switch t.Keysym.Mod {
 					default:
 						h, width, height = expandWindowDown(window, h, width)
-						lifeMap, neighborMap = expandMapsDown(lifeMap, neighborMap)
+						lifeMap = expandMapsDown(lifeMap)
 					case sdl.KMOD_LSHIFT:
 						h--
 						width, height = updateWidthAndHeight(w, h, window)
 						lifeMap = lifeMap[:len(lifeMap)-1]
-						neighborMap = neighborMap[:len(neighborMap)-1]
 					}
 					renderLifeMap(lifeMap, width, height, surface)
 					go func() {
@@ -213,7 +223,7 @@ func main() {
 					if err != nil {
 						panic(err)
 					}
-					passFrame(lifeMap, neighborMap, width, height, surface, lifeType)
+					passFrame(lifeMap, width, height, surface, lifeType)
 					err = window.UpdateSurface()
 					if err != nil {
 						panic(err)
@@ -223,14 +233,13 @@ func main() {
 					switch t.Keysym.Mod {
 					default:
 						w, width, height = expandWindowRight(window, w, height)
-						lifeMap, neighborMap = expandMapsRight(lifeMap, neighborMap)
+						lifeMap = expandMapsRight(lifeMap)
 					case sdl.KMOD_LSHIFT:
 						w--
 						width, height = updateWidthAndHeight(w, h, window)
 						for i := 0; i < len(lifeMap); i++ {
-							lifeMap[i][len(lifeMap[i])-1], neighborMap[i][len(neighborMap[i])-1] = false, 0
+							lifeMap[i][len(lifeMap[i])-1].Alive, lifeMap[i][len(lifeMap[i])-1].Neighbors, lifeMap[i][len(lifeMap[i])-1].Locked = false, 0, 0
 							lifeMap[i] = lifeMap[i][:len(lifeMap[i])-1]
-							neighborMap[i] = neighborMap[i][:len(neighborMap[i])-1]
 						}
 					}
 					renderLifeMap(lifeMap, width, height, surface)
@@ -239,11 +248,11 @@ func main() {
 					}()
 				case sdl.K_c:
 					h, w := len(lifeMap), len(lifeMap[0])
-					lifeMap = make([][]bool, h)
+					lifeMap = make([][]Life, h)
 					for i := 0; i < len(lifeMap); i++ {
-						lifeMap[i] = make([]bool, w)
+						lifeMap[i] = make([]Life, w)
 					}
-					neighborMap = generateNeighborMap(lifeMap)
+					lifeMap = updateNeighbors(lifeMap)
 					renderLifeMap(lifeMap, width, height, surface)
 				}
 			}
@@ -253,7 +262,7 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			passFrame(lifeMap, neighborMap, width, height, surface, lifeType)
+			passFrame(lifeMap, width, height, surface, lifeType)
 			err = window.UpdateSurface()
 			avg = handleFrameTime(start, avg)
 			if err != nil {
@@ -287,17 +296,16 @@ func rotateRight[T any](nums []T, k int) {
 	copy(nums, new_array)
 }
 
-func expandMapsRight(lifeMap [][]bool, neighborMap [][]int16) ([][]bool, [][]int16) {
-	for i := range neighborMap {
-		neighborMap[i] = append(neighborMap[i], 0)
-		lifeMap[i] = append(lifeMap[i], false)
+func expandMapsRight(lifeMap [][]Life) [][]Life {
+	for i := range lifeMap {
+		lifeMap[i] = append(lifeMap[i], Life{})
 	}
-	for i := range neighborMap {
-		for j := range neighborMap[i] {
-			neighborMap[i][j] = int16(getNeighbors(j, i, lifeMap))
+	for i := range lifeMap {
+		for j := range lifeMap[i] {
+			lifeMap[i][j].Neighbors = uint8(getNeighbors(j, i, lifeMap))
 		}
 	}
-	return lifeMap, neighborMap
+	return lifeMap
 }
 
 func expandWindowRight(window *sdl.Window, w int, height int32) (int, int32, int32) {
@@ -313,10 +321,10 @@ func expandWindowRight(window *sdl.Window, w int, height int32) (int, int32, int
 
 func clearWindow(surface *sdl.Surface, window *sdl.Window) {
 	width, height := window.GetSize()
-	renderCell(width, height, 0, 0, false, surface)
+	renderCell(width, height, 0, 0, Life{}, surface)
 }
 
-func renderLifeMap(lifeMap [][]bool, width, height int32, surface *sdl.Surface) {
+func renderLifeMap(lifeMap [][]Life, width, height int32, surface *sdl.Surface) {
 	for i := range lifeMap {
 		for j := range lifeMap[i] {
 			renderCell(width, height, j, i, lifeMap[i][j], surface)
@@ -324,15 +332,14 @@ func renderLifeMap(lifeMap [][]bool, width, height int32, surface *sdl.Surface) 
 	}
 }
 
-func expandMapsDown(lifeMap [][]bool, neighborMap [][]int16) ([][]bool, [][]int16) {
-	lifeMap = append(lifeMap, make([]bool, len(lifeMap[0])))
-	neighborMap = append(neighborMap, make([]int16, len(neighborMap[0])))
-	for i := range neighborMap {
-		for j := range neighborMap[i] {
-			neighborMap[i][j] = int16(getNeighbors(j, i, lifeMap))
+func expandMapsDown(lifeMap [][]Life) [][]Life {
+	lifeMap = append(lifeMap, make([]Life, len(lifeMap[0])))
+	for i := range lifeMap {
+		for j := range lifeMap[i] {
+			lifeMap[i][j].Neighbors = uint8(getNeighbors(j, i, lifeMap))
 		}
 	}
-	return lifeMap, neighborMap
+	return lifeMap
 }
 
 func expandWindowDown(window *sdl.Window, h int, width int32) (int, int32, int32) {
@@ -357,26 +364,22 @@ func handleFrameTime(start time.Time, avg time.Duration) time.Duration {
 	return avg
 }
 
-func generateNeighborMap(lifeMap [][]bool) [][]int16 {
-	neighborMap := make([][]int16, len(lifeMap))
-	for i := 0; i < len(lifeMap); i++ {
-		neighborMap[i] = make([]int16, len(lifeMap[i]))
-	}
+func updateNeighbors(lifeMap [][]Life) [][]Life {
 	for i := 0; i < len(lifeMap); i++ {
 		for j := 0; j < len(lifeMap[i]); j++ {
-			neighborMap[i][j] = int16(getNeighbors(j, i, lifeMap))
+			lifeMap[i][j].Neighbors = getNeighbors(j, i, lifeMap)
 		}
 	}
-	return neighborMap
+	return lifeMap
 }
 
-func renderCell(width, height int32, x, y int, alive bool, surface *sdl.Surface) {
+func renderCell(width, height int32, x, y int, life Life, surface *sdl.Surface) {
 	rect := sdl.Rect{int32(x) * width, int32(y) * height, width, height}
 	colour := sdl.Color{R: 0, G: 0, B: 0, A: 255}
 	if width == height {
 		colour = sdl.Color{R: 25, G: 25, B: 25, A: 255}
 	}
-	if alive {
+	if life.Alive {
 		colour = sdl.Color{R: 255, G: 255, B: 255, A: 255}
 	}
 	pixel := sdl.MapRGBA(surface.Format, colour.R, colour.G, colour.B, colour.A)
@@ -391,25 +394,25 @@ func renderCell(width, height int32, x, y int, alive bool, surface *sdl.Surface)
 	}
 }
 
-func randomizeMap(arr [][]bool) {
+func randomizeMap(arr [][]Life) {
 	for i := range arr {
 		for j := range arr[i] {
 			val := rand.Intn(2)
 			if val == 1 {
-				arr[i][j] = true
+				arr[i][j].Alive = true
 			} else {
-				arr[i][j] = false
+				arr[i][j].Alive = false
 			}
 		}
 	}
 }
 
-func printMap(arr [][]bool) {
+func printMap(arr [][]Life) {
 	// fmt.Print("\033[s")
 	str := ""
 	for i := range arr {
 		for j := range arr[i] {
-			if !arr[i][j] {
+			if !arr[i][j].Alive {
 				str += ""
 			} else {
 				str += "󰝤"
@@ -421,7 +424,7 @@ func printMap(arr [][]bool) {
 	fmt.Printf("%s", str)
 }
 
-func makeLifeMap() [][]bool {
+func makeLifeMap() [][]Life {
 	if len(os.Args) < 3 {
 		fmt.Println("Not enough args, usage: ./main height width")
 		os.Exit(1)
@@ -436,156 +439,161 @@ func makeLifeMap() [][]bool {
 		fmt.Println("Invalid argument 2(width)")
 		os.Exit(1)
 	}
-	var lifeMap = make([][]bool, height)
+	var lifeMap = make([][]Life, height)
 
 	for i := 0; i < len(lifeMap); i++ {
-		lifeMap[i] = make([]bool, width)
+		lifeMap[i] = make([]Life, width)
 	}
 	return lifeMap
 }
 
-func passFrame(lifeMap [][]bool, neighborMap [][]int16, width, height int32, surface *sdl.Surface, lifeType [][]int) {
+func passFrame(lifeMap [][]Life, width, height int32, surface *sdl.Surface, lifeType [][]int) {
 	var wg sync.WaitGroup
-	ch := make(chan Position, (len(lifeMap) * len(lifeMap[1])))
+	ch := make(chan Life, (len(lifeMap) * len(lifeMap[1])))
 	for y := 0; y < len(lifeMap); y++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			processRow(y, lifeMap, neighborMap, ch, lifeType)
+			processRow(y, lifeMap, ch, lifeType)
 		}()
 	}
 	wg.Wait()
 	close(ch)
 	for i := range ch {
-		lifeMap[i.Y][i.X] = i.Val
-		renderCell(width, height, i.X, i.Y, i.Val, surface)
-		changeNeighborOfCells(i, neighborMap)
+		lifeMap[i.Pos.Y][i.Pos.X].Alive = i.Alive
+		renderCell(width, height, i.Pos.X, i.Pos.Y, i, surface)
+		changeNeighborOfCells(i, lifeMap)
 	}
 }
 
-func printNeighborMap(neighborMap [][]int16) {
+func printNeighborMap(neighborMap [][]Life) {
 	for i := 0; i < len(neighborMap); i++ {
 		for j := 0; j < len(neighborMap[i]); j++ {
-			fmt.Print(neighborMap[i][j], " ")
+			fmt.Print(neighborMap[i][j].Neighbors, " ")
 		}
 		fmt.Print("\n")
 	}
+  fmt.Print("\n")
 }
 
-func processRow(y int, lifeMap [][]bool, neighborMap [][]int16, ch chan Position, lifeType [][]int) {
+func processRow(y int, lifeMap [][]Life, ch chan Life, lifeType [][]int) {
 	for x := 0; x < len(lifeMap[y]); x++ {
-		pos := processCell(x, y, lifeMap, neighborMap, lifeType)
-		if pos.X != -1 {
-			ch <- pos
+		life := processCell(x, y, lifeMap, lifeType)
+		if life.Pos.X != -1 {
+			ch <- life
 		}
 	}
 }
 
-func changeNeighborOfCells(p Position, neighborMap [][]int16) {
-	x, y := p.X, p.Y
-	rows := len(neighborMap)
-	cols := len(neighborMap[0])
-	if p.Val {
-		neighborMap[(y-1+rows)%rows][(x-1+cols)%cols]++
-		neighborMap[(y-1+rows)%rows][x]++
-		neighborMap[(y-1+rows)%rows][(x+1)%cols]++
-		neighborMap[y][(x-1+cols)%cols]++
-		neighborMap[y][(x+1)%cols]++
-		neighborMap[(y+1)%rows][(x-1+cols)%cols]++
-		neighborMap[(y+1)%rows][x]++
-		neighborMap[(y+1)%rows][(x+1)%cols]++
+func changeNeighborOfCells(l Life, lifeMap [][]Life) {
+	x, y := l.Pos.X, l.Pos.Y
+	rows := len(lifeMap)
+	cols := len(lifeMap[0])
+	if l.Alive{
+		lifeMap[(y-1+rows)%rows][(x-1+cols)%cols].Neighbors++
+		lifeMap[(y-1+rows)%rows][x].Neighbors++
+		lifeMap[(y-1+rows)%rows][(x+1)%cols].Neighbors++
+		lifeMap[y][(x-1+cols)%cols].Neighbors++
+		lifeMap[y][(x+1)%cols].Neighbors++
+		lifeMap[(y+1)%rows][(x-1+cols)%cols].Neighbors++
+		lifeMap[(y+1)%rows][x].Neighbors++
+		lifeMap[(y+1)%rows][(x+1)%cols].Neighbors++
 	} else {
-		neighborMap[(y-1+rows)%rows][(x-1+cols)%cols]--
-		neighborMap[(y-1+rows)%rows][x]--
-		neighborMap[(y-1+rows)%rows][(x+1)%cols]--
-		neighborMap[y][(x-1+cols)%cols]--
-		neighborMap[y][(x+1)%cols]--
-		neighborMap[(y+1)%rows][(x-1+cols)%cols]--
-		neighborMap[(y+1)%rows][x]--
-		neighborMap[(y+1)%rows][(x+1)%cols]--
+		lifeMap[(y-1+rows)%rows][(x-1+cols)%cols].Neighbors--
+		lifeMap[(y-1+rows)%rows][x].Neighbors--
+		lifeMap[(y-1+rows)%rows][(x+1)%cols].Neighbors--
+		lifeMap[y][(x-1+cols)%cols].Neighbors--
+		lifeMap[y][(x+1)%cols].Neighbors--
+		lifeMap[(y+1)%rows][(x-1+cols)%cols].Neighbors--
+		lifeMap[(y+1)%rows][x].Neighbors--
+		lifeMap[(y+1)%rows][(x+1)%cols].Neighbors--
 	}
 }
 
-func processCell(x, y int, lifeMap [][]bool, neighborMap [][]int16, lifeType [][]int) Position {
-	alive := lifeMap[y][x]
-	stay := Position{-1, 0, false}
-	change := Position{x, y, !lifeMap[y][x]}
-	neighbors := neighborMap[y][x]
+func processCell(x, y int, lifeMap [][]Life, lifeType [][]int) Life {
+	alive := lifeMap[y][x].Alive
+  stay := Life{}
+  stay.Pos.X = -1
+	change := lifeMap[y][x]
+  change.Pos.X = x
+  change.Pos.Y = y
+  change.Alive = !change.Alive
+	neighbors := lifeMap[y][x].Neighbors
 	if !alive {
 		for i := 0; i < len(lifeType[1]); i++ {
-			if neighbors == int16(lifeType[1][i]) {
+			if neighbors == uint8(lifeType[1][i]) {
 				return change
 			}
 		}
 	}
-  if alive {
-    for i := 0; i < len(lifeType[0]); i++ {
-      if neighbors == int16(lifeType[0][i]){
-      return stay
-      }
-    }
-    return change
-  }
+	if alive {
+		for i := 0; i < len(lifeType[0]); i++ {
+			if neighbors == uint8(lifeType[0][i]) {
+				return stay
+			}
+		}
+		return change
+	}
 	return stay
 }
 
-func getNeighbors(x, y int, arr [][]bool) int {
-	return checkLeft(x, y, arr) + checkRight(x, y, arr) + checkDown(x, y, arr) + checkUp(x, y, arr) + checkBottomCorners(x, y, arr) + checkTopCorners(x, y, arr)
+func getNeighbors(x, y int, arr [][]Life) uint8 {
+	return uint8(checkLeft(x, y, arr) + checkRight(x, y, arr) + checkDown(x, y, arr) + checkUp(x, y, arr) + checkBottomCorners(x, y, arr) + checkTopCorners(x, y, arr))
 }
 
-func checkRight(x, y int, arr [][]bool) int {
+func checkRight(x, y int, arr [][]Life) int {
 	if x == len(arr[y])-1 {
-		if !arr[y][0] {
+		if !arr[y][0].Alive {
 			return 0
 		}
 		return 1
 	}
-	if !arr[y][x+1] {
+	if !arr[y][x+1].Alive {
 		return 0
 	}
 	return 1
 }
 
-func checkLeft(x, y int, arr [][]bool) int {
+func checkLeft(x, y int, arr [][]Life) int {
 	if x == 0 {
-		if !arr[y][len(arr[y])-1] {
+		if !arr[y][len(arr[y])-1].Alive {
 			return 0
 		}
 		return 1
 	}
-	if !arr[y][x-1] {
+	if !arr[y][x-1].Alive {
 		return 0
 	}
 	return 1
 }
 
-func checkUp(x, y int, arr [][]bool) int {
+func checkUp(x, y int, arr [][]Life) int {
 	if y == 0 {
-		if !arr[len(arr)-1][x] {
+		if !arr[len(arr)-1][x].Alive {
 			return 0
 		}
 		return 1
 	}
-	if !arr[y-1][x] {
+	if !arr[y-1][x].Alive {
 		return 0
 	}
 	return 1
 }
 
-func checkDown(x, y int, arr [][]bool) int {
+func checkDown(x, y int, arr [][]Life) int {
 	if y == len(arr)-1 {
-		if !arr[0][x] {
+		if !arr[0][x].Alive {
 			return 0
 		}
 		return 1
 	}
-	if !arr[y+1][x] {
+	if !arr[y+1][x].Alive {
 		return 0
 	}
 	return 1
 }
 
-func checkBottomCorners(x, y int, arr [][]bool) int {
+func checkBottomCorners(x, y int, arr [][]Life) int {
 	counter := 0
 	if y == len(arr)-1 {
 		counter += checkRight(x, 0, arr)
@@ -597,7 +605,7 @@ func checkBottomCorners(x, y int, arr [][]bool) int {
 	return counter
 }
 
-func checkTopCorners(x, y int, arr [][]bool) int {
+func checkTopCorners(x, y int, arr [][]Life) int {
 	counter := 0
 	if y == 0 {
 		counter += checkRight(x, len(arr)-1, arr)
