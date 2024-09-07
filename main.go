@@ -17,6 +17,10 @@ type Position struct {
 }
 
 func main() {
+	life := "gol"
+	if len(os.Args) > 3 {
+		life = os.Args[3]
+	}
 	lifeMap := makeLifeMap()
 	err := sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
@@ -179,7 +183,7 @@ func main() {
 					if err != nil {
 						panic(err)
 					}
-					passFrame(lifeMap, neighborMap, width, height, surface)
+					passFrame(lifeMap, neighborMap, width, height, surface, life)
 					err = window.UpdateSurface()
 					if err != nil {
 						panic(err)
@@ -204,13 +208,13 @@ func main() {
 						window.UpdateSurface()
 					}()
 				case sdl.K_c:
-          h, w := len(lifeMap), len(lifeMap[0])
-          lifeMap = make([][]bool, h)
-          for i := 0; i < len(lifeMap); i++ {
-            lifeMap[i] = make([]bool, w)
-          }
-          neighborMap = generateNeighborMap(lifeMap)
-          renderLifeMap(lifeMap, width, height, surface)
+					h, w := len(lifeMap), len(lifeMap[0])
+					lifeMap = make([][]bool, h)
+					for i := 0; i < len(lifeMap); i++ {
+						lifeMap[i] = make([]bool, w)
+					}
+					neighborMap = generateNeighborMap(lifeMap)
+					renderLifeMap(lifeMap, width, height, surface)
 				}
 			}
 		}
@@ -219,8 +223,8 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			passFrame(lifeMap, neighborMap, width, height, surface)
-			err = window.UpdateSurface()
+			passFrame(lifeMap, neighborMap, width, height, surface, life)
+			window.UpdateSurface()
 			avg = handleFrameTime(start, avg)
 			if err != nil {
 				panic(err)
@@ -410,14 +414,14 @@ func makeLifeMap() [][]bool {
 	return lifeMap
 }
 
-func passFrame(lifeMap [][]bool, neighborMap [][]int16, width, height int32, surface *sdl.Surface) {
+func passFrame(lifeMap [][]bool, neighborMap [][]int16, width, height int32, surface *sdl.Surface, life string) {
 	var wg sync.WaitGroup
 	ch := make(chan Position, (len(lifeMap) * len(lifeMap[1])))
 	for y := 0; y < len(lifeMap); y++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			processRow(y, lifeMap, neighborMap, ch)
+			processRow(y, lifeMap, neighborMap, ch, life)
 		}()
 	}
 	wg.Wait()
@@ -438,9 +442,9 @@ func printNeighborMap(neighborMap [][]int16) {
 	}
 }
 
-func processRow(y int, lifeMap [][]bool, neighborMap [][]int16, ch chan Position) {
+func processRow(y int, lifeMap [][]bool, neighborMap [][]int16, ch chan Position, life string) {
 	for x := 0; x < len(lifeMap[y]); x++ {
-		pos := processCell(x, y, lifeMap, neighborMap)
+		pos := processCell(x, y, lifeMap, neighborMap, life)
 		if pos.X != -1 {
 			ch <- pos
 		}
@@ -472,16 +476,40 @@ func changeNeighborOfCells(p Position, neighborMap [][]int16) {
 	}
 }
 
-func processCell(x, y int, lifeMap [][]bool, neighborMap [][]int16) Position {
-	neighbors := neighborMap[y][x]
-	if neighbors == 3 && !lifeMap[y][x] {
-		// fmt.Println("Turning ",x,y,"alive")
-
-		return Position{x, y, true}
+func processCell(x, y int, lifeMap [][]bool, neighborMap [][]int16, life string) Position {
+	nothing := Position{-1, 0, false}
+	if life == "gol" {
+		neighbors := neighborMap[y][x]
+		if neighbors == 3 && !lifeMap[y][x] {
+			return Position{x, y, true}
+		}
+		if (neighbors < 2 || neighbors > 3) && lifeMap[y][x] {
+			return Position{x, y, false}
+		}
+		return Position{-1, 0, false}
 	}
-	if (neighbors < 2 || neighbors > 3) && lifeMap[y][x] {
-		// fmt.Println("Killing ",x,y)
-		return Position{x, y, false}
+	if life == "maze" {
+		neighbors := neighborMap[y][x]
+		switch neighbors {
+		case 1:
+			return nothing
+    case 2:
+      return nothing
+    case 3:
+      if !lifeMap[y][x] {
+        return Position{x, y, true}
+      }
+      return nothing
+    case 4:
+      return nothing
+    case 5:
+      return nothing
+    default:
+      if lifeMap[y][x] {
+        return Position{x, y, false}
+      }
+      return nothing
+		}
 	}
 	return Position{-1, 0, false}
 }
