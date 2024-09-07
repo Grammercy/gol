@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/veandco/go-sdl2/sdl"
 	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/veandco/go-sdl2/sdl"
 )
 
 type Position struct {
@@ -16,11 +18,39 @@ type Position struct {
 	Val bool
 }
 
+func convertStringToLifeType(str string) [][]int {
+	if str == "" {
+		str = "23/3/2"
+	}
+	nums := strings.Split(str, "/")
+	lifeType := make([][]int, 3)
+	for i := 0; i < 3; i++ {
+		numbers := strings.Split(nums[i], "")
+		intArr := make([]int, len(numbers))
+		for j := 0; j < len(numbers); j++ {
+			intArr[j], _ = strconv.Atoi(numbers[j])
+		}
+		lifeType[i] = intArr
+	}
+	return lifeType
+}
+
 func main() {
 	life := "gol"
+	var lifeType [][]int
 	if len(os.Args) > 3 {
 		life = os.Args[3]
+		switch life {
+		case "gol":
+			// 23/3/2/
+			lifeType = convertStringToLifeType("23/3/2")
+		case "maze":
+			lifeType = convertStringToLifeType("12345/3/2")
+		case "repl":
+			lifeType = convertStringToLifeType("1357/1357/2")
+		}
 	}
+	fmt.Println(lifeType)
 	lifeMap := makeLifeMap()
 	err := sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
@@ -183,7 +213,7 @@ func main() {
 					if err != nil {
 						panic(err)
 					}
-					passFrame(lifeMap, neighborMap, width, height, surface, life)
+					passFrame(lifeMap, neighborMap, width, height, surface, lifeType)
 					err = window.UpdateSurface()
 					if err != nil {
 						panic(err)
@@ -223,8 +253,8 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			passFrame(lifeMap, neighborMap, width, height, surface, life)
-			window.UpdateSurface()
+			passFrame(lifeMap, neighborMap, width, height, surface, lifeType)
+			err = window.UpdateSurface()
 			avg = handleFrameTime(start, avg)
 			if err != nil {
 				panic(err)
@@ -414,14 +444,14 @@ func makeLifeMap() [][]bool {
 	return lifeMap
 }
 
-func passFrame(lifeMap [][]bool, neighborMap [][]int16, width, height int32, surface *sdl.Surface, life string) {
+func passFrame(lifeMap [][]bool, neighborMap [][]int16, width, height int32, surface *sdl.Surface, lifeType [][]int) {
 	var wg sync.WaitGroup
 	ch := make(chan Position, (len(lifeMap) * len(lifeMap[1])))
 	for y := 0; y < len(lifeMap); y++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			processRow(y, lifeMap, neighborMap, ch, life)
+			processRow(y, lifeMap, neighborMap, ch, lifeType)
 		}()
 	}
 	wg.Wait()
@@ -442,9 +472,9 @@ func printNeighborMap(neighborMap [][]int16) {
 	}
 }
 
-func processRow(y int, lifeMap [][]bool, neighborMap [][]int16, ch chan Position, life string) {
+func processRow(y int, lifeMap [][]bool, neighborMap [][]int16, ch chan Position, lifeType [][]int) {
 	for x := 0; x < len(lifeMap[y]); x++ {
-		pos := processCell(x, y, lifeMap, neighborMap, life)
+		pos := processCell(x, y, lifeMap, neighborMap, lifeType)
 		if pos.X != -1 {
 			ch <- pos
 		}
@@ -476,42 +506,27 @@ func changeNeighborOfCells(p Position, neighborMap [][]int16) {
 	}
 }
 
-func processCell(x, y int, lifeMap [][]bool, neighborMap [][]int16, life string) Position {
-	nothing := Position{-1, 0, false}
-	if life == "gol" {
-		neighbors := neighborMap[y][x]
-		if neighbors == 3 && !lifeMap[y][x] {
-			return Position{x, y, true}
-		}
-		if (neighbors < 2 || neighbors > 3) && lifeMap[y][x] {
-			return Position{x, y, false}
-		}
-		return Position{-1, 0, false}
-	}
-	if life == "maze" {
-		neighbors := neighborMap[y][x]
-		switch neighbors {
-		case 1:
-			return nothing
-    case 2:
-      return nothing
-    case 3:
-      if !lifeMap[y][x] {
-        return Position{x, y, true}
-      }
-      return nothing
-    case 4:
-      return nothing
-    case 5:
-      return nothing
-    default:
-      if lifeMap[y][x] {
-        return Position{x, y, false}
-      }
-      return nothing
+func processCell(x, y int, lifeMap [][]bool, neighborMap [][]int16, lifeType [][]int) Position {
+	alive := lifeMap[y][x]
+	stay := Position{-1, 0, false}
+	change := Position{x, y, !lifeMap[y][x]}
+	neighbors := neighborMap[y][x]
+	if !alive {
+		for i := 0; i < len(lifeType[1]); i++ {
+			if neighbors == int16(lifeType[1][i]) {
+				return change
+			}
 		}
 	}
-	return Position{-1, 0, false}
+  if alive {
+    for i := 0; i < len(lifeType[0]); i++ {
+      if neighbors == int16(lifeType[0][i]){
+      return stay
+      }
+    }
+    return change
+  }
+	return stay
 }
 
 func getNeighbors(x, y int, arr [][]bool) int {
