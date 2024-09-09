@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
+	// "sync"
 	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -64,6 +64,8 @@ func main() {
 			lifeType = convertStringToLifeType("34/34/2")
 		case "star":
 			lifeType = convertStringToLifeType("3456/278/6")
+    case "lote":
+      lifeType = convertStringToLifeType("3458/37/4")
 		}
 	}
 	lifeMap := makeLifeMap()
@@ -459,16 +461,16 @@ func makeLifeMap() [][]Life {
 }
 
 func passFrame(lifeMap [][]Life, width, height int32, surface *sdl.Surface, lifeType [][]int) {
-	var wg sync.WaitGroup
+	// var wg sync.WaitGroup
 	ch := make(chan Life, (len(lifeMap) * len(lifeMap[0])))
 	for y := 0; y < len(lifeMap); y++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		// wg.Add(1)
+		// go func() {
+			// defer wg.Done()
 			processRow(y, lifeMap, ch, lifeType)
-		}()
+		// }()
 	}
-	wg.Wait()
+	// wg.Wait()
 	close(ch)
 	for i := range ch {
     if i.Locked == 100 {
