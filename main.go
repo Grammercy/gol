@@ -63,7 +63,7 @@ func main() {
 		case "34":
 			lifeType = convertStringToLifeType("34/34/2")
 		case "star":
-			lifeType = convertStringToLifeType("3456/278/8")
+			lifeType = convertStringToLifeType("3456/278/6")
 		}
 	}
 	lifeMap := makeLifeMap()
