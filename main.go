@@ -49,6 +49,8 @@ func main() {
 	if len(os.Args) > 3 {
 		life = os.Args[3]
 		switch life {
+		default:
+			lifeType = convertStringToLifeType(life)
 		case "gol":
 			// 23/3/2/
 			lifeType = convertStringToLifeType("23/3/2")
@@ -56,12 +58,12 @@ func main() {
 			lifeType = convertStringToLifeType("12345/3/2")
 		case "repl":
 			lifeType = convertStringToLifeType("1357/1357/2")
-    case "wall":
-      lifeType = convertStringToLifeType("2345/45678/2")
-    case "34":
-      lifeType = convertStringToLifeType("34/34/2")
-    // case "star":
-      // lifeType = convertStringToLifeType("3456/278/8")
+		case "wall":
+			lifeType = convertStringToLifeType("2345/45678/2")
+		case "34":
+			lifeType = convertStringToLifeType("34/34/2")
+		case "star":
+			lifeType = convertStringToLifeType("3456/278/8")
 		}
 	}
 	lifeMap := makeLifeMap()
@@ -90,7 +92,7 @@ func main() {
 
 	// fmt.Println("width ", width, "height", height)
 	window.UpdateSurface()
-	randomizeMap(lifeMap)
+	// randomizeMap(lifeMap)
 	// lifeMap[1][1] = true
 	// lifeMap[0][1], lifeMap[1][2], lifeMap[2][0], lifeMap[2][1], lifeMap[2][2] = true, true, true, true, true
 	lifeMap = updateNeighbors(lifeMap)
@@ -122,10 +124,10 @@ func main() {
 						break
 					}
 					lifeMap[y][x].Alive = draggingState
-          life := Life{}
-          life.Pos.X, life.Pos.Y, life.Alive = int(x), int(y), lifeMap[y][x].Alive
+					life := Life{}
+					life.Pos.X, life.Pos.Y, life.Alive = int(x), int(y), lifeMap[y][x].Alive
 					changeNeighborOfCells(life, lifeMap)
-          lifeMap = updateNeighbors(lifeMap)
+					lifeMap = updateNeighbors(lifeMap)
 					renderCell(width, height, int(x), int(y), lifeMap[y][x], surface)
 					go func() {
 						window.UpdateSurface()
@@ -144,8 +146,8 @@ func main() {
 				lifeMap[y][x].Alive = !lifeMap[y][x].Alive
 				draggingState = lifeMap[y][x].Alive
 				p := Position{x, y}
-        life := Life{}
-        life.Pos, life.Alive = p, draggingState
+				life := Life{}
+				life.Pos, life.Alive = p, draggingState
 				changeNeighborOfCells(life, lifeMap)
 				renderLifeMap(lifeMap, width, height, surface)
 				window.UpdateSurface()
@@ -383,9 +385,9 @@ func renderCell(width, height int32, x, y int, life Life, surface *sdl.Surface) 
 	if life.Alive {
 		colour = sdl.Color{R: 255, G: 255, B: 255, A: 255}
 	}
-  if life.Locked > 0 {
-    colour = sdl.Color{R: (255/life.Locked), G: (255/life.Locked), B: 255, A: 255}
-  }
+	if life.Locked > 0 {
+		colour = sdl.Color{R: (uint8(255.0 / ((1.0/float64(life.Locked))+1))), G: (uint8(255.0 / ((1.0/float64(life.Locked))+1))), B: 255, A: 255}
+	}
 	pixel := sdl.MapRGBA(surface.Format, colour.R, colour.G, colour.B, colour.A)
 	// err := surface.Lock()
 	// if err != nil {
@@ -448,11 +450,11 @@ func makeLifeMap() [][]Life {
 	for i := 0; i < len(lifeMap); i++ {
 		lifeMap[i] = make([]Life, width)
 	}
-  for y := 0; y < len(lifeMap); y++ {
-    for x := 0; x < len(lifeMap[y]); x++ {
-      lifeMap[y][x].Pos = Position{x, y}
-    }
-  }
+	for y := 0; y < len(lifeMap); y++ {
+		for x := 0; x < len(lifeMap[y]); x++ {
+			lifeMap[y][x].Pos = Position{x, y}
+		}
+	}
 	return lifeMap
 }
 
@@ -469,10 +471,24 @@ func passFrame(lifeMap [][]Life, width, height int32, surface *sdl.Surface, life
 	wg.Wait()
 	close(ch)
 	for i := range ch {
+    if i.Locked == 100 {
+      lifeMap[i.Pos.Y][i.Pos.X].Locked = 0
+      lifeMap[i.Pos.Y][i.Pos.X].Alive = false
+      renderCell(width, height, i.Pos.X, i.Pos.Y, lifeMap[i.Pos.Y][i.Pos.X], surface)
+      continue
+    }
+    if i.Locked > 0 && i.Alive {
+      lifeMap[i.Pos.Y][i.Pos.X].Locked--
+      renderCell(width, height, i.Pos.X, i.Pos.Y, i, surface)
+      continue
+    }
 		lifeMap[i.Pos.Y][i.Pos.X].Alive = i.Alive
+		lifeMap[i.Pos.Y][i.Pos.X].Locked = i.Locked
 		renderCell(width, height, i.Pos.X, i.Pos.Y, i, surface)
 		changeNeighborOfCells(i, lifeMap)
 	}
+  // printMap(lifeMap)
+  // printNeighborMap(lifeMap)
 }
 
 func printNeighborMap(neighborMap [][]Life) {
@@ -482,7 +498,7 @@ func printNeighborMap(neighborMap [][]Life) {
 		}
 		fmt.Print("\n")
 	}
-  fmt.Print("\n")
+	fmt.Print("\n")
 }
 
 func processRow(y int, lifeMap [][]Life, ch chan Life, lifeType [][]int) {
@@ -498,7 +514,7 @@ func changeNeighborOfCells(l Life, lifeMap [][]Life) {
 	x, y := l.Pos.X, l.Pos.Y
 	rows := len(lifeMap)
 	cols := len(lifeMap[0])
-	if l.Alive{
+	if l.Alive {
 		lifeMap[(y-1+rows)%rows][(x-1+cols)%cols].Neighbors++
 		lifeMap[(y-1+rows)%rows][x].Neighbors++
 		lifeMap[(y-1+rows)%rows][(x+1)%cols].Neighbors++
@@ -521,17 +537,22 @@ func changeNeighborOfCells(l Life, lifeMap [][]Life) {
 
 func processCell(x, y int, lifeMap [][]Life, lifeType [][]int) Life {
 	alive := lifeMap[y][x].Alive
-  stay := Life{}
-  stay.Pos.X = -1
+	stay := Life{}
+	stay.Pos.X = -1
 	change := lifeMap[y][x]
-  change.Pos.X = x
-  change.Pos.Y = y
-  change.Alive = !change.Alive
+	change.Pos.X = x
+	change.Pos.Y = y
+	change.Alive = !change.Alive
 	neighbors := lifeMap[y][x].Neighbors
-  if change.Locked > 0 {
+	if lifeMap[y][x].Locked > 0 {
     change.Locked--
+    if change.Locked == 0 {
+      change.Locked = 100
+    }
+    // fmt.Println("hi")
+    return change
   }
-	if !alive {
+  if !alive {
 		for i := 0; i < len(lifeType[1]); i++ {
 			if neighbors == uint8(lifeType[1][i]) {
 				return change
@@ -544,7 +565,7 @@ func processCell(x, y int, lifeMap [][]Life, lifeType [][]int) Life {
 				return stay
 			}
 		}
-    change.Locked = uint8(lifeType[2][0]-2)
+		change.Locked = uint8(lifeType[2][0] - 2)
 		return change
 	}
 	return stay
