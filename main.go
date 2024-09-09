@@ -64,8 +64,8 @@ func main() {
 			lifeType = convertStringToLifeType("34/34/2")
 		case "star":
 			lifeType = convertStringToLifeType("3456/278/6")
-    case "lote":
-      lifeType = convertStringToLifeType("3458/37/4")
+		case "lote":
+			lifeType = convertStringToLifeType("3458/37/4")
 		}
 	}
 	lifeMap := makeLifeMap()
@@ -85,13 +85,7 @@ func main() {
 	}
 	w, err := strconv.Atoi(os.Args[1])
 	h, err := strconv.Atoi(os.Args[2])
-	width, height := window.GetSize()
-	height /= int32(h)
-	if width < height {
-		height = width
-	}
-	width = height
-
+	width, height := updateWidthAndHeight(w, h, window)
 	// fmt.Println("width ", width, "height", height)
 	window.UpdateSurface()
 	// randomizeMap(lifeMap)
@@ -363,7 +357,7 @@ func handleFrameTime(start time.Time, avg time.Duration) time.Duration {
 	avg = (avg + frameTime) / 2
 	if time.Since(start) < 32*time.Millisecond {
 		time.Sleep(32*time.Millisecond - time.Since(start))
-	} else if frameTime > 100*time.Millisecond {
+	} else if frameTime > 32*time.Millisecond {
 		go fmt.Println("Long frame comp", frameTime)
 	}
 	return avg
@@ -388,7 +382,7 @@ func renderCell(width, height int32, x, y int, life Life, surface *sdl.Surface) 
 		colour = sdl.Color{R: 255, G: 255, B: 255, A: 255}
 	}
 	if life.Locked > 0 {
-		colour = sdl.Color{R: (uint8(255.0 / ((1.0/float64(life.Locked))+1))), G: (uint8(255.0 / ((1.0/float64(life.Locked))+1))), B: 255, A: 255}
+		colour = sdl.Color{R: (uint8(255.0 / ((1.0 / float64(life.Locked)) + 1))), G: (uint8(255.0 / ((1.0 / float64(life.Locked)) + 1))), B: 255, A: 255}
 	}
 	pixel := sdl.MapRGBA(surface.Format, colour.R, colour.G, colour.B, colour.A)
 	// err := surface.Lock()
@@ -460,37 +454,33 @@ func makeLifeMap() [][]Life {
 	return lifeMap
 }
 
+const chunkSize int = 300
+
 func passFrame(lifeMap [][]Life, width, height int32, surface *sdl.Surface, lifeType [][]int) {
-	// var wg sync.WaitGroup
 	ch := make(chan Life, (len(lifeMap) * len(lifeMap[0])))
 	for y := 0; y < len(lifeMap); y++ {
-		// wg.Add(1)
-		// go func() {
-			// defer wg.Done()
-			processRow(y, lifeMap, ch, lifeType)
-		// }()
+		processRow(y, lifeMap, ch, lifeType)
 	}
-	// wg.Wait()
 	close(ch)
 	for i := range ch {
-    if i.Locked == 100 {
-      lifeMap[i.Pos.Y][i.Pos.X].Locked = 0
-      lifeMap[i.Pos.Y][i.Pos.X].Alive = false
-      renderCell(width, height, i.Pos.X, i.Pos.Y, lifeMap[i.Pos.Y][i.Pos.X], surface)
-      continue
-    }
-    if i.Locked > 0 && i.Alive {
-      lifeMap[i.Pos.Y][i.Pos.X].Locked--
-      renderCell(width, height, i.Pos.X, i.Pos.Y, i, surface)
-      continue
-    }
+		if i.Locked == 100 {
+			lifeMap[i.Pos.Y][i.Pos.X].Locked = 0
+			lifeMap[i.Pos.Y][i.Pos.X].Alive = false
+			renderCell(width, height, i.Pos.X, i.Pos.Y, lifeMap[i.Pos.Y][i.Pos.X], surface)
+			continue
+		}
+		if i.Locked > 0 && i.Alive {
+			lifeMap[i.Pos.Y][i.Pos.X].Locked--
+			renderCell(width, height, i.Pos.X, i.Pos.Y, i, surface)
+			continue
+		}
 		lifeMap[i.Pos.Y][i.Pos.X].Alive = i.Alive
 		lifeMap[i.Pos.Y][i.Pos.X].Locked = i.Locked
 		renderCell(width, height, i.Pos.X, i.Pos.Y, i, surface)
 		changeNeighborOfCells(i, lifeMap)
 	}
-  // printMap(lifeMap)
-  // printNeighborMap(lifeMap)
+	// printMap(lifeMap)
+	// printNeighborMap(lifeMap)
 }
 
 func printNeighborMap(neighborMap [][]Life) {
@@ -547,14 +537,14 @@ func processCell(x, y int, lifeMap [][]Life, lifeType [][]int) Life {
 	change.Alive = !change.Alive
 	neighbors := lifeMap[y][x].Neighbors
 	if lifeMap[y][x].Locked > 0 {
-    change.Locked--
-    if change.Locked == 0 {
-      change.Locked = 100
-    }
-    // fmt.Println("hi")
-    return change
-  }
-  if !alive {
+		change.Locked--
+		if change.Locked == 0 {
+			change.Locked = 100
+		}
+		// fmt.Println("hi")
+		return change
+	}
+	if !alive {
 		for i := 0; i < len(lifeType[1]); i++ {
 			if neighbors == uint8(lifeType[1][i]) {
 				return change
