@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	// "sync"
+	"sync"
 	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -457,10 +457,20 @@ func makeLifeMap() [][]Life {
 const chunkSize int = 300
 
 func passFrame(lifeMap [][]Life, width, height int32, surface *sdl.Surface, lifeType [][]int) {
+	var wg sync.WaitGroup
 	ch := make(chan Life, (len(lifeMap) * len(lifeMap[0])))
 	for y := 0; y < len(lifeMap); y++ {
-		processRow(y, lifeMap, ch, lifeType)
+		if y < len(lifeMap)/2 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				processRow(y, lifeMap, ch, lifeType)
+			}()
+		} else {
+			processRow(y, lifeMap, ch, lifeType)
+		}
 	}
+	wg.Wait()
 	close(ch)
 	for i := range ch {
 		if i.Locked == 100 {
