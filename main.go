@@ -43,31 +43,37 @@ func convertStringToLifeType(str string) [][]int {
 	return lifeType
 }
 
+func convertStringToRules(life string) [][]int {
+  var lifeType [][]int
+  switch life {
+	default:
+		lifeType = convertStringToLifeType(life)
+	case "gol":
+		// 23/3/2/
+		lifeType = convertStringToLifeType("23/3/2")
+	case "maze":
+		lifeType = convertStringToLifeType("12345/3/2")
+	case "repl":
+		lifeType = convertStringToLifeType("1357/1357/2")
+	case "wall":
+		lifeType = convertStringToLifeType("2345/45678/2")
+	case "34":
+		lifeType = convertStringToLifeType("34/34/2")
+	case "star":
+		lifeType = convertStringToLifeType("3456/278/6")
+  case "lote":
+		lifeType = convertStringToLifeType("3458/37/4")
+	}
+  return lifeType
+}
+
 func main() {
 	life := "gol"
 	var lifeType [][]int
 	if len(os.Args) > 3 {
 		life = os.Args[3]
-		switch life {
-		default:
-			lifeType = convertStringToLifeType(life)
-		case "gol":
-			// 23/3/2/
-			lifeType = convertStringToLifeType("23/3/2")
-		case "maze":
-			lifeType = convertStringToLifeType("12345/3/2")
-		case "repl":
-			lifeType = convertStringToLifeType("1357/1357/2")
-		case "wall":
-			lifeType = convertStringToLifeType("2345/45678/2")
-		case "34":
-			lifeType = convertStringToLifeType("34/34/2")
-		case "star":
-			lifeType = convertStringToLifeType("3456/278/6")
-		case "lote":
-			lifeType = convertStringToLifeType("3458/37/4")
-		}
-	}
+  }
+  lifeType = convertStringToLifeType(life)
 	lifeMap := makeLifeMap()
 	err := sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
@@ -453,8 +459,6 @@ func makeLifeMap() [][]Life {
 	}
 	return lifeMap
 }
-
-const chunkSize int = 300
 
 func passFrame(lifeMap [][]Life, width, height int32, surface *sdl.Surface, lifeType [][]int) {
 	var wg sync.WaitGroup
